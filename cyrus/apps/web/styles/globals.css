@@ -1,0 +1,238 @@
+@import "@plane/tailwind-config/index.css";
+@import "@plane/editor/styles";
+@import "@plane/propel/styles/react-day-picker.css";
+@import "./power-k.css";
+@import "./emoji.css";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --font-heading: "Geist", "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Geist", "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-code: "Geist Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --bg-canvas: #0f1117;
+  --bg-surface-1: #131722;
+  --bg-surface-2: #191f2d;
+  --bg-layer-1: #1f2636;
+  --bg-layer-1-hover: #273147;
+  --bg-layer-1-active: #303b56;
+  --bg-layer-1-selected: #26324d;
+  --bg-layer-2: #161c29;
+  --bg-layer-2-hover: #20293c;
+  --bg-layer-2-active: #29344c;
+  --bg-layer-2-selected: #22304a;
+  --bg-layer-3: #222b3d;
+  --bg-layer-3-hover: #2a354b;
+  --bg-layer-3-active: #34415c;
+  --bg-layer-3-selected: #2d3b56;
+  --bg-accent-primary: #3b82f6;
+  --bg-accent-primary-hover: #4a8cf7;
+  --bg-accent-primary-active: #2e6fe0;
+  --bg-accent-subtle: rgb(59 130 246 / 0.18);
+  --bg-accent-subtle-hover: rgb(59 130 246 / 0.24);
+  --bg-accent-subtle-active: rgb(59 130 246 / 0.3);
+  --bg-success-primary: #10b981;
+  --bg-success-subtle: rgb(16 185 129 / 0.18);
+  --bg-success-subtle-1: rgb(16 185 129 / 0.24);
+  --bg-warning-primary: #f59e0b;
+  --bg-warning-subtle: rgb(245 158 11 / 0.18);
+  --border-accent-strong: rgb(59 130 246 / 0.55);
+  --border-accent-subtle: rgb(59 130 246 / 0.28);
+  --border-success-strong: rgb(16 185 129 / 0.5);
+  --border-success-subtle: rgb(16 185 129 / 0.24);
+  --border-warning-strong: rgb(245 158 11 / 0.5);
+  --border-warning-subtle: rgb(245 158 11 / 0.24);
+}
+
+/* stickies and editor colors */
+:root {
+  /* text colors */
+  --editor-colors-gray-text: #5c5e63;
+  --editor-colors-peach-text: #ff5b59;
+  --editor-colors-pink-text: #f65385;
+  --editor-colors-orange-text: #fd9038;
+  --editor-colors-green-text: #0fc27b;
+  --editor-colors-light-blue-text: #17bee9;
+  --editor-colors-dark-blue-text: #266df0;
+  --editor-colors-purple-text: #9162f9;
+  /* end text colors */
+
+  /* background colors */
+  --editor-colors-gray-background: #d6d6d8;
+  --editor-colors-peach-background: #ffd5d7;
+  --editor-colors-pink-background: #fdd4e3;
+  --editor-colors-orange-background: #ffe3cd;
+  --editor-colors-green-background: #c3f0de;
+  --editor-colors-light-blue-background: #c5eff9;
+  --editor-colors-dark-blue-background: #c9dafb;
+  --editor-colors-purple-background: #e3d8fd;
+  /* end background colors */
+}
+/* background colors */
+[data-theme*="light"] {
+  --editor-colors-gray-background: #d6d6d8;
+  --editor-colors-peach-background: #ffd5d7;
+  --editor-colors-pink-background: #fdd4e3;
+  --editor-colors-orange-background: #ffe3cd;
+  --editor-colors-green-background: #c3f0de;
+  --editor-colors-light-blue-background: #c5eff9;
+  --editor-colors-dark-blue-background: #c9dafb;
+  --editor-colors-purple-background: #e3d8fd;
+}
+[data-theme*="dark"] {
+  --editor-colors-gray-background: #404144;
+  --editor-colors-peach-background: #593032;
+  --editor-colors-pink-background: #562e3d;
+  --editor-colors-orange-background: #583e2a;
+  --editor-colors-green-background: #1d4a3b;
+  --editor-colors-light-blue-background: #1f495c;
+  --editor-colors-dark-blue-background: #223558;
+  --editor-colors-purple-background: #3d325a;
+}
+/* end background colors */
+
+.shadow-custom {
+  box-shadow: 2px 2px 8px 2px rgba(234, 231, 250, 0.3); /* Convert #EAE7FA4D to rgba */
+}
+/* backdrop filter */
+.backdrop-blur-custom {
+  @apply backdrop-filter blur-[9px];
+}
+
+.epr-search-container > input {
+  @apply bg-surface-2! text-primary!;
+  border: none !important;
+}
+
+.epr-search-container > input::placeholder {
+  @apply text-placeholder!;
+}
+
+.epr-search-container > .epr-icn-search {
+  @apply text-placeholder!;
+}
+
+/* Lock icon animations */
+@keyframes textSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px);
+    max-width: 0px;
+  }
+  40% {
+    opacity: 0.7;
+    max-width: 60px;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    max-width: 60px;
+  }
+}
+
+@keyframes textFadeOut {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+@keyframes lockIconAnimation {
+  0% {
+    transform: rotate(-5deg) scale(1);
+  }
+  25% {
+    transform: rotate(0deg) scale(1.15);
+  }
+  50% {
+    transform: rotate(5deg) scale(1.08);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes unlockIconAnimation {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  40% {
+    transform: rotate(-8deg) scale(1.15);
+  }
+  80% {
+    transform: rotate(3deg) scale(1.05);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-text-slide-in {
+  animation: textSlideIn 400ms ease-out forwards;
+}
+
+.animate-text-fade-out {
+  animation: textFadeOut 600ms ease-in 300ms forwards;
+}
+
+.animate-lock-icon {
+  animation: lockIconAnimation 600ms ease-out forwards;
+}
+
+.animate-unlock-icon {
+  animation: unlockIconAnimation 600ms ease-out forwards;
+}
+
+.animate-fade-out {
+  animation: fadeOut 500ms ease-in 100ms forwards;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: var(--background-color-layer-2);
+    border-radius: 4px;
+  }
+  100% {
+    background-color: transparent;
+    border-radius: 4px;
+  }
+}
+
+/* Progress Bar Styles */
+:root {
+  --bprogress-color: var(--background-color-accent-primary);
+  --bprogress-height: 2.5px !important;
+}
+
+.bprogress {
+  pointer-events: none;
+}
+
+.bprogress .bar {
+  background: linear-gradient(
+    90deg,
+    --alpha(var(--background-color-accent-primary) / 80%) 0%,
+    --alpha(var(--background-color-accent-primary) / 100%) 100%
+  ) !important;
+  will-change: width, opacity;
+}
+
+.bprogress .peg {
+  display: block;
+  box-shadow:
+    0 0 8px --alpha(var(--background-color-accent-primary) / 60%),
+    0 0 4px --alpha(var(--background-color-accent-primary) / 40%) !important;
+  will-change: transform, opacity;
+}

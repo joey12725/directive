@@ -1,0 +1,102 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+.npm
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.turbo/
+.react-router/
+*.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output
+htmlcov/
+.coverage
+.pytest_cache/
+.ruff_cache/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.secrets
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+tmp_*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+*.pyc
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.history
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Sentry
+.sentryclirc
+
+# Redis
+*.rdb
+*.rdb.gz
+
+# Lock files (depending on team preference, you may want to track these)
+# package-lock.json
+
+# Storybook
+storybook-static/
+*storybook.log
+
+# Vercel
+.vercel
+
+# Session logs
+session\ logs/
+
+# Claude Code settings
+.claude/
+
+# Specific project files
+CLAUDE.md
+nul

@@ -1,0 +1,13 @@
+{
+  "name": "Cyrus",
+  "short_name": "Cyrus",
+  "description": "Cyrus helps you plan your issues, cycles, and product modules.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#3f76ff",
+  "icons": [
+    { "src": "/cyrus-logos/cyrus-mobile-pwa.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/cyrus-logos/cyrus-mobile-pwa.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

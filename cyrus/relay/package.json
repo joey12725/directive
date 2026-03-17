@@ -1,0 +1,21 @@
+{
+  "name": "cyrus-relay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lightweight HTTP relay for running ACPX agents on gateway machines",
+  "license": "AGPL-3.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "node --import tsx src/index.ts",
+    "check:types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "^4.20.6",
+    "typescript": "catalog:"
+  }
+}
