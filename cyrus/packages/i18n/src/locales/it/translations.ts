@@ -89,7 +89,7 @@ export default {
       already_have_an_account: "Hai già un account?",
       login: "Accedi",
       create_account: "Crea un account",
-      new_to_plane: "Nuovo su Cyrus?",
+      new_to_Cyrus: "Nuovo su Cyrus?",
       back_to_sign_in: "Torna al login",
       resend_in: "Reinvia in {seconds} secondi",
       sign_in_with_unique_code: "Accedi con codice unico",
@@ -414,7 +414,7 @@ export default {
   full_changelog: "Changelog completo",
   support: "Supporto",
   forum: "Forum",
-  powered_by_plane_pages: "Supportato da Cyrus Pages",
+  powered_by_Cyrus_pages: "Supportato da Cyrus Pages",
   please_select_at_least_one_invitation: "Seleziona almeno un invito.",
   please_select_at_least_one_invitation_description: "Seleziona almeno un invito per unirti allo spazio di lavoro.",
   we_see_that_someone_has_invited_you_to_join_a_workspace:
@@ -625,7 +625,7 @@ export default {
         issues: "Elementi di lavoro",
       },
     },
-    new_at_plane: {
+    new_at_Cyrus: {
       title: "Novità su Cyrus",
     },
     quick_tutorial: {
@@ -2660,7 +2660,7 @@ export default {
     edited_by: "Modificato da",
   },
   self_hosted_maintenance_message: {
-    plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start:
+    Cyrus_didnt_start_up_this_could_be_because_one_or_more_Cyrus_services_failed_to_start:
       "Cyrus non si è avviato. Questo potrebbe essere dovuto al fatto che uno o più servizi Cyrus non sono riusciti ad avviarsi.",
     choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure:
       "Scegli View Logs da setup.sh e dai log Docker per essere sicuro.",

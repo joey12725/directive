@@ -325,7 +325,16 @@ class SchedulingEngine:
         if self._redis_available:
             try:
                 import json
-                self.redis_client.setex(cache_key, self.CACHE_TTL, json.dumps(result))
+                from decimal import Decimal
+
+                # Custom JSON encoder for UUID and Decimal
+                def json_serializer(obj):
+                    if isinstance(obj, Decimal):
+                        return float(obj)
+                    return str(obj)
+
+                serialized = json.dumps(result, default=json_serializer)
+                self.redis_client.setex(cache_key, self.CACHE_TTL, serialized)
             except Exception as exc:
                 logger.warning(f"Redis write failed: {exc}")
 

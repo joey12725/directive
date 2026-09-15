@@ -89,7 +89,7 @@ export default {
       already_have_an_account: "已有账号？",
       login: "登录",
       create_account: "创建账号",
-      new_to_plane: "首次使用 Cyrus？",
+      new_to_Cyrus: "首次使用 Cyrus？",
       back_to_sign_in: "返回登录",
       resend_in: "{seconds} 秒后重新发送",
       sign_in_with_unique_code: "使用唯一码登录",
@@ -399,7 +399,7 @@ export default {
   full_changelog: "完整更新日志",
   support: "支持",
   forum: "Forum",
-  powered_by_plane_pages: "由Plane Pages提供支持",
+  powered_by_Cyrus_pages: "由Cyrus Pages提供支持",
   please_select_at_least_one_invitation: "请至少选择一个邀请。",
   please_select_at_least_one_invitation_description: "请至少选择一个加入工作区的邀请。",
   we_see_that_someone_has_invited_you_to_join_a_workspace: "我们看到有人邀请您加入工作区",
@@ -560,7 +560,7 @@ export default {
       not_right_now: "暂时不要",
       create_project: {
         title: "创建项目",
-        description: "在Plane中，大多数事情都从项目开始。",
+        description: "在Cyrus中，大多数事情都从项目开始。",
         cta: "开始使用",
       },
       invite_team: {
@@ -574,7 +574,7 @@ export default {
         cta: "配置此工作区",
       },
       personalize_account: {
-        title: "让Plane更适合您",
+        title: "让Cyrus更适合您",
         description: "选择您的头像、颜色等。",
         cta: "立即个性化",
       },
@@ -607,8 +607,8 @@ export default {
         issues: "工作项",
       },
     },
-    new_at_plane: {
-      title: "Plane新功能",
+    new_at_Cyrus: {
+      title: "Cyrus新功能",
     },
     quick_tutorial: {
       title: "快速教程",
@@ -2580,7 +2580,7 @@ export default {
     edited_by: "编辑者",
   },
   self_hosted_maintenance_message: {
-    plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start:
+    Cyrus_didnt_start_up_this_could_be_because_one_or_more_Cyrus_services_failed_to_start:
       "Cyrus 未能启动。这可能是因为一个或多个 Cyrus 服务启动失败。",
     choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure:
       "请选择“查看日志”来查看 setup.sh 和 Docker 日志，以确认问题。",

@@ -5,12 +5,12 @@
  * Import this to get access to the configured agent factory.
  */
 
-import { AgentFactory, getAgentFactory } from './factory.js';
-import { ClaudeCodeRunner } from './claude-code.js';
-import { OpenClawRunner } from './openclaw.js';
-import { GeminiRunner } from './gemini.js';
-// Import other runners as they're implemented:
-// import { CodexRunner } from './codex.js';
+import { AgentFactory, getAgentFactory } from "./factory.js";
+import { ClaudeCodeRunner } from "./claude-code.js";
+import { OpenClawRunner } from "./openclaw.js";
+import { GeminiRunner } from "./gemini.js";
+import { CodexRunner } from "./codex.js";
+import { OpenCodeRunner } from "./opencode.js";
 // import { ACPXRunner } from './acpx.js';
 
 /**
@@ -29,9 +29,10 @@ export function createAgentFactory(): AgentFactory {
   factory.register(new ClaudeCodeRunner());
   factory.register(new OpenClawRunner());
   factory.register(new GeminiRunner());
+  factory.register(new CodexRunner());
+  factory.register(new OpenCodeRunner());
 
   // Add new runners here as they're implemented:
-  // factory.register(new CodexRunner());
   // factory.register(new ACPXRunner()); // Generic fallback
 
   return factory;
@@ -46,6 +47,6 @@ export const agentFactory = createAgentFactory();
 /**
  * Export types for use by consumers
  */
-export { AgentRunner, type PromptRequest } from './base.js';
-export { AgentFactory } from './factory.js';
-export type * from '../types/agent-events.js';
+export { AgentRunner, type PromptRequest } from "./base.js";
+export { AgentFactory } from "./factory.js";
+export type * from "../types/agent-events.js";

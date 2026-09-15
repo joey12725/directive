@@ -27,7 +27,7 @@ export default {
       close_project_menu: "Cerrar menú de proyecto",
       collapse_sidebar: "Colapsar barra lateral",
       expand_sidebar: "Expandir barra lateral",
-      edition_badge: "Abrir modal de planes de pago",
+      edition_badge: "Abrir modal de Cyruss de pago",
     },
     auth_forms: {
       clear_email: "Limpiar correo electrónico",

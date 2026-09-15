@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "node --import tsx src/index.ts",
-    "check:types": "tsc --noEmit"
+    "check:types": "tsc --noEmit",
+    "test": "node --import tsx --test src/agents/codex.test.ts src/agents/opencode.test.ts"
   },
   "dependencies": {
     "fastify": "^5.6.1"

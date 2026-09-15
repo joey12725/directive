@@ -89,7 +89,7 @@ export default {
       already_have_an_account: "已有帳戶？",
       login: "登入",
       create_account: "創建帳戶",
-      new_to_plane: "初次使用Plane？",
+      new_to_Cyrus: "初次使用Cyrus？",
       back_to_sign_in: "返回登入",
       resend_in: "{seconds}秒後重新發送",
       sign_in_with_unique_code: "使用唯一代碼登入",
@@ -398,7 +398,7 @@ export default {
   full_changelog: "完整更新日誌",
   support: "支援",
   forum: "Forum",
-  powered_by_plane_pages: "由 Cyrus Pages 提供",
+  powered_by_Cyrus_pages: "由 Cyrus Pages 提供",
   please_select_at_least_one_invitation: "請至少選擇一個邀請。",
   please_select_at_least_one_invitation_description: "請至少選擇一個邀請加入工作區。",
   we_see_that_someone_has_invited_you_to_join_a_workspace: "我們發現有人邀請您加入工作區",
@@ -606,7 +606,7 @@ export default {
         issues: "工作事項",
       },
     },
-    new_at_plane: {
+    new_at_Cyrus: {
       title: "Cyrus 新功能",
     },
     quick_tutorial: {
@@ -1935,12 +1935,12 @@ export default {
       label: "自動化",
       "auto-archive": {
         title: "自動封存已關閉的工作項目",
-        description: "Plane將自動封存已完成或已取消的工作項目。",
+        description: "Cyrus將自動封存已完成或已取消的工作項目。",
         duration: "自動封存已關閉的工作項目",
       },
       "auto-close": {
         title: "自動關閉工作項目",
-        description: "Plane將自動關閉未完成或未取消的工作項目。",
+        description: "Cyrus將自動關閉未完成或未取消的工作項目。",
         duration: "自動關閉非活動工作項目",
         auto_close_status: "自動關閉狀態",
       },
@@ -2602,7 +2602,7 @@ export default {
     edited_by: "編輯者",
   },
   self_hosted_maintenance_message: {
-    plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start:
+    Cyrus_didnt_start_up_this_could_be_because_one_or_more_Cyrus_services_failed_to_start:
       "Cyrus 未能啟動。這可能是因為一個或多個 Cyrus 服務啟動失敗。",
     choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure: "從 setup.sh 和 Docker 日誌中選擇 View Logs 來確認。",
   },

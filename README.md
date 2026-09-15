@@ -4,7 +4,7 @@ Autonomous agent orchestration platform built on a Plane fork.
 
 ## Overview
 
-Cyrus v2 is an advanced autonomous agent orchestration platform that extends the capabilities of the Plane project management system with AI-powered automation and intelligent task management.
+Cyrus v2 is an autonomous agent orchestration platform that extends the Plane project-management system with AI-powered automation, scheduling, metering, and intelligent task management.
 
 ## Project Structure
 
@@ -16,6 +16,8 @@ Cyrus v2 is an advanced autonomous agent orchestration platform that extends the
 - `prompts.md` - AI prompts and templates
 - `PHASE3_TEST_REPORT.md` - Testing documentation
 - `PROVIDER_STATUS.md` - Provider status tracking
+
+The separate `workspace/` directory is intentionally maintained as its own repository (`Cyrus-v2-workspace`) and is not part of this code repository.
 
 ## Getting Started
 
@@ -56,4 +58,4 @@ AGPL-3.0 - See LICENSE.txt for details
 
 ## Repository
 
-https://github.com/joey12725/directive.git
+https://github.com/joey12725/Cyrus-v2

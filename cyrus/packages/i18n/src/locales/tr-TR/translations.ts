@@ -90,7 +90,7 @@ export default {
       already_have_an_account: "Zaten bir hesabınız var mı?",
       login: "Giriş yap",
       create_account: "Hesap oluştur",
-      new_to_plane: "Cyrus'e yeni mi geldiniz?",
+      new_to_Cyrus: "Cyrus'e yeni mi geldiniz?",
       back_to_sign_in: "Giriş yapmaya geri dön",
       resend_in: "{seconds} saniye içinde tekrar gönder",
       sign_in_with_unique_code: "Benzersiz kod ile giriş yap",
@@ -410,7 +410,7 @@ export default {
   full_changelog: "Tam Değişiklik Kaydı",
   support: "Destek",
   forum: "Forum",
-  powered_by_plane_pages: "Cyrus Pages tarafından desteklenmektedir",
+  powered_by_Cyrus_pages: "Cyrus Pages tarafından desteklenmektedir",
   please_select_at_least_one_invitation: "Lütfen en az bir davet seçin.",
   please_select_at_least_one_invitation_description: "Çalışma alanına katılmak için lütfen en az bir davet seçin.",
   we_see_that_someone_has_invited_you_to_join_a_workspace: "Birinin sizi bir çalışma alanına davet ettiğini görüyoruz",
@@ -620,7 +620,7 @@ export default {
         issues: "İş öğeleri",
       },
     },
-    new_at_plane: {
+    new_at_Cyrus: {
       title: "Cyrus'de Yenilikler",
     },
     quick_tutorial: {
@@ -2626,7 +2626,7 @@ export default {
     edited_by: "Tarafından düzenlendi",
   },
   self_hosted_maintenance_message: {
-    plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start:
+    Cyrus_didnt_start_up_this_could_be_because_one_or_more_Cyrus_services_failed_to_start:
       "Cyrus başlatılamadı. Bu, bir veya daha fazla Cyrus servisinin başlatılamaması nedeniyle olabilir.",
     choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure:
       "Emin olmak için setup.sh ve Docker loglarından View Logs&apos;u seçin.",

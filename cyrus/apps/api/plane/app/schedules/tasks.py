@@ -1,11 +1,17 @@
 """
-Celery Tasks for Phase 4 Scheduling Engine
+Celery Tasks for Phase 4 Scheduling Engine - Enhanced
 
 These tasks handle:
 - Periodic scheduling ticks to evaluate dispatch plans
-- Individual dispatch execution
-- Conflict detection across schedule rows
+- Individual dispatch execution with retry and circuit breaker
+- Advanced conflict detection with resolution suggestions
 - Automatic cycle management based on project cycle_duration
+
+Enhanced with:
+- Exponential backoff retry
+- Allocation tracking (last_dispatched_at, consecutive_failures)
+- Circuit breaker integration
+- Detailed metrics and logging
 """
 
 from __future__ import annotations
@@ -38,11 +44,7 @@ def scheduling_tick() -> dict[str, Any]:
     3. Dispatches work items based on the computed dispatch plan
 
     Returns:
-        Dictionary with statistics about the tick execution:
-            - workspaces_evaluated: Number of workspaces processed
-            - total_plans: Total dispatch plans generated
-            - dispatches_triggered: Number of execute_dispatch tasks launched
-            - errors: Number of errors encountered
+        Dictionary with statistics about the tick execution
     """
     stats = {
         "workspaces_evaluated": 0,
@@ -80,27 +82,30 @@ def scheduling_tick() -> dict[str, Any]:
     return stats
 
 
-@shared_task
+@shared_task(
+    autoretry_for=(ConnectionError, TimeoutError),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
+    retry_jitter=True,
+)
 def execute_dispatch(allocation_id: str, intensity: str) -> dict[str, Any]:
     """
     Execute a dispatch for a specific ComputeAllocation.
 
-    This task:
-    1. Fetches the ComputeAllocation with all related objects
-    2. Uses the Orchestrator to select work and compose a prompt
-    3. Dispatches the work via ACPXDispatcher
-    4. Triggers post-dispatch analysis
+    Enhanced with:
+    - Exponential backoff retry for connection errors
+    - Rate limit backoff using Celery countdown (non-blocking)
+    - Allocation tracking (last_dispatched_at, consecutive_failures)
+    - Circuit breaker integration
+    - Comprehensive error handling
 
     Args:
         allocation_id: UUID string of the ComputeAllocation to dispatch
         intensity: Dispatch intensity level ("conservative", "normal", "aggressive")
 
     Returns:
-        Dictionary with dispatch results:
-            - allocation_id: The allocation ID
-            - session_id: Created session ID (if successful)
-            - status: "success", "failed", or "skipped"
-            - error: Error message (if failed)
+        Dictionary with dispatch results
     """
     try:
         # Fetch the allocation with related objects
@@ -115,6 +120,34 @@ def execute_dispatch(allocation_id: str, intensity: str) -> dict[str, Any]:
             "status": "failed",
             "error": "Allocation not found",
         }
+
+    # Check for recent rate limit events on this pool
+    from plane.db.models import RateLimitEvent
+    recent_rate_limit = RateLimitEvent.objects.filter(
+        pool=alloc.pool,
+        timestamp__gte=timezone.now() - timedelta(hours=6)  # Check last 6 hours
+    ).order_by('-timestamp').first()
+
+    if recent_rate_limit and recent_rate_limit.retry_after_seconds > 0:
+        # Calculate time remaining until retry is allowed
+        time_since_event = (timezone.now() - recent_rate_limit.timestamp).total_seconds()
+        time_remaining = recent_rate_limit.retry_after_seconds - time_since_event
+
+        if time_remaining > 0:
+            # Reschedule this task using Celery countdown (non-blocking)
+            logger.info(
+                f"Rate limit active for pool {alloc.pool.name}, rescheduling dispatch in {time_remaining:.0f}s"
+            )
+            # Use apply_async with countdown to reschedule
+            execute_dispatch.apply_async(
+                args=[allocation_id, intensity],
+                countdown=min(time_remaining, 21600)  # Cap at 6 hours
+            )
+            return {
+                "allocation_id": allocation_id,
+                "status": "rate_limited_rescheduled",
+                "retry_after_seconds": time_remaining,
+            }
 
     try:
         # Check if project exists
@@ -152,7 +185,12 @@ def execute_dispatch(allocation_id: str, intensity: str) -> dict[str, Any]:
 
         session = dispatcher.dispatch(prompt)
 
-        # Trigger post-dispatch analysis (stub for now)
+        # Update allocation tracking
+        alloc.last_dispatched_at = timezone.now()
+        alloc.consecutive_failures = 0  # Reset on success
+        alloc.save(update_fields=['last_dispatched_at', 'consecutive_failures', 'updated_at'])
+
+        # Trigger post-dispatch analysis
         post_dispatch_analysis.delay(str(alloc.project.id), str(work_item.id))
 
         logger.info(
@@ -167,8 +205,42 @@ def execute_dispatch(allocation_id: str, intensity: str) -> dict[str, Any]:
             "status": "success",
         }
 
+    except (ConnectionError, TimeoutError) as exc:
+        # These will be retried automatically by Celery
+        logger.warning(f"Retryable error for allocation {allocation_id}: {exc}")
+        _increment_allocation_failures(alloc)
+        raise  # Celery will handle retry
+
     except Exception as exc:
         logger.exception(f"Error executing dispatch for allocation {allocation_id}")
+        _increment_allocation_failures(alloc)
+
+        # Check if the session was rate limited and reschedule
+        if hasattr(exc, 'response') and getattr(exc.response, 'status_code', None) == 429:
+            # Extract retry_after from response headers if available
+            retry_after = 0
+            if hasattr(exc, 'response') and exc.response is not None:
+                retry_after_header = exc.response.headers.get('Retry-After')
+                if retry_after_header:
+                    try:
+                        retry_after = float(retry_after_header)
+                    except (ValueError, TypeError):
+                        retry_after = 3600  # Default to 1 hour
+
+            if retry_after > 0:
+                logger.info(
+                    f"Rate limit (429) for allocation {allocation_id}, rescheduling in {retry_after:.0f}s"
+                )
+                execute_dispatch.apply_async(
+                    args=[allocation_id, intensity],
+                    countdown=min(retry_after, 21600)  # Cap at 6 hours
+                )
+                return {
+                    "allocation_id": allocation_id,
+                    "status": "rate_limited_rescheduled",
+                    "retry_after_seconds": retry_after,
+                }
+
         return {
             "allocation_id": allocation_id,
             "status": "failed",
@@ -176,28 +248,36 @@ def execute_dispatch(allocation_id: str, intensity: str) -> dict[str, Any]:
         }
 
 
-@shared_task
-def detect_conflicts(workspace_id: str) -> list[dict[str, Any]]:
-    """
-    Detect scheduling conflicts for a workspace.
+def _increment_allocation_failures(alloc: ComputeAllocation) -> None:
+    """Increment consecutive failure counter for circuit breaker."""
+    try:
+        alloc.consecutive_failures += 1
+        alloc.save(update_fields=['consecutive_failures', 'updated_at'])
+        logger.warning(
+            f"Allocation {alloc.id} consecutive failures: {alloc.consecutive_failures}"
+        )
+    except Exception as exc:
+        logger.error(f"Failed to update allocation failure count: {exc}")
 
-    This task evaluates all ScheduleRow entries for overlapping time windows
-    that target the same ComputePool. If the sum of utilization_pct for
-    overlapping rows exceeds 100, it's flagged as a conflict.
+
+@shared_task
+def detect_conflicts(workspace_id: str) -> dict[str, Any]:
+    """
+    Detect scheduling conflicts for a workspace with resolution suggestions.
+
+    Enhanced with:
+    - Detailed conflict categorization
+    - Resolution strategy suggestions
+    - Severity scoring
 
     Args:
         workspace_id: The workspace ID to check
 
     Returns:
-        List of conflict dictionaries, each containing:
-            - pool_id: The conflicting pool ID
-            - pool_name: The pool name
-            - schedule_ids: List of schedule IDs involved
-            - rows: List of row details (day, start_time, end_time, utilization_pct)
-            - total_utilization: Sum of utilization percentages
-            - time_window: Description of the conflict window
+        Dictionary with conflicts and resolution suggestions
     """
     conflicts = []
+    resolution_suggestions = []
 
     try:
         # Get all schedules for this workspace
@@ -212,49 +292,55 @@ def detect_conflicts(workspace_id: str) -> list[dict[str, Any]]:
         for schedule in schedules:
             for alloc in schedule.allocations.filter(deleted_at__isnull=True):
                 pool_id = str(alloc.pool_id)
+                pool_name = alloc.pool.name
+
                 if pool_id not in pool_to_rows:
                     pool_to_rows[pool_id] = []
 
                 # Add all rows from this schedule for this pool
                 for row in schedule.rows.filter(deleted_at__isnull=True):
-                    pool_to_rows[pool_id].append((schedule, row))
+                    pool_to_rows[pool_id].append((schedule, row, pool_name))
 
         # Check each pool for conflicts
         for pool_id, schedule_rows in pool_to_rows.items():
-            # Group by day and check for time overlaps
-            conflicts_for_pool = _find_overlapping_rows(schedule_rows)
+            pool_name = schedule_rows[0][2] if schedule_rows else "Unknown"
+            conflicts_for_pool = _find_overlapping_rows_with_suggestions(schedule_rows, pool_id, pool_name)
 
             for conflict in conflicts_for_pool:
                 if conflict["total_utilization"] > 100:
-                    conflict["pool_id"] = pool_id
                     conflicts.append(conflict)
+                    resolution_suggestions.extend(conflict.get("suggestions", []))
+
+                    severity = _calculate_conflict_severity(conflict["total_utilization"])
                     logger.warning(
-                        f"Scheduling conflict detected for pool {pool_id}: "
+                        f"Scheduling conflict detected (severity: {severity}) for pool {pool_name}: "
                         f"{conflict['total_utilization']}% utilization in {conflict['time_window']}"
                     )
 
     except Exception as exc:
         logger.exception(f"Error detecting conflicts for workspace {workspace_id}")
 
-    return conflicts
+    return {
+        "conflicts": conflicts,
+        "resolution_suggestions": resolution_suggestions,
+        "total_conflicts": len(conflicts),
+    }
 
 
-def _find_overlapping_rows(schedule_rows: list[tuple[Schedule, ScheduleRow]]) -> list[dict[str, Any]]:
+def _find_overlapping_rows_with_suggestions(
+    schedule_rows: list[tuple[Schedule, ScheduleRow, str]],
+    pool_id: str,
+    pool_name: str
+) -> list[dict[str, Any]]:
     """
-    Helper function to find overlapping time windows in schedule rows.
-
-    Args:
-        schedule_rows: List of (Schedule, ScheduleRow) tuples
-
-    Returns:
-        List of conflict dictionaries
+    Helper function to find overlapping time windows with resolution suggestions.
     """
     conflicts = []
 
     # Group by day
     day_groups: dict[str, list[tuple[Schedule, ScheduleRow]]] = {}
 
-    for schedule, row in schedule_rows:
+    for schedule, row, _ in schedule_rows:
         days = row.days if isinstance(row.days, list) else []
         for day in days:
             if day not in day_groups:
@@ -269,7 +355,16 @@ def _find_overlapping_rows(schedule_rows: list[tuple[Schedule, ScheduleRow]]) ->
                 # Check if time windows overlap
                 if _times_overlap(row1.start_time, row1.end_time, row2.start_time, row2.end_time):
                     total_util = row1.utilization_pct + row2.utilization_pct
+                    over_utilization = total_util - 100
+
+                    # Generate resolution suggestions
+                    suggestions = _generate_conflict_resolutions(
+                        row1, row2, over_utilization, pool_name
+                    )
+
                     conflicts.append({
+                        "pool_id": pool_id,
+                        "pool_name": pool_name,
                         "schedule_ids": [str(sched1.id), str(sched2.id)],
                         "rows": [
                             {
@@ -288,10 +383,69 @@ def _find_overlapping_rows(schedule_rows: list[tuple[Schedule, ScheduleRow]]) ->
                             },
                         ],
                         "total_utilization": total_util,
+                        "over_utilization": over_utilization,
                         "time_window": f"{day} {row1.start_time}-{row1.end_time}",
+                        "suggestions": suggestions,
                     })
 
     return conflicts
+
+
+def _generate_conflict_resolutions(
+    row1: ScheduleRow,
+    row2: ScheduleRow,
+    over_utilization: int,
+    pool_name: str
+) -> list[dict[str, str]]:
+    """Generate resolution suggestions for scheduling conflicts."""
+    suggestions = []
+
+    # Suggestion 1: Reduce utilization percentages
+    reduction_each = (over_utilization + 1) // 2
+    new_util_1 = row1.utilization_pct - reduction_each
+    new_util_2 = row2.utilization_pct - reduction_each
+
+    if new_util_1 > 0 and new_util_2 > 0:
+        suggestions.append({
+            "strategy": "reduce_utilization",
+            "description": f"Reduce row 1 utilization to {new_util_1}% and row 2 to {new_util_2}%",
+            "impact": "Both schedules run concurrently with reduced capacity",
+        })
+
+    # Suggestion 2: Shift time windows
+    suggestions.append({
+        "strategy": "shift_times",
+        "description": f"Shift one schedule's time window to avoid overlap",
+        "impact": "Schedules run at different times, full capacity for each",
+    })
+
+    # Suggestion 3: Use different pool
+    suggestions.append({
+        "strategy": "different_pool",
+        "description": f"Move one schedule to a different compute pool",
+        "impact": "Distributes load across multiple pools",
+    })
+
+    # Suggestion 4: Merge schedules
+    suggestions.append({
+        "strategy": "merge_schedules",
+        "description": f"Combine both schedules into one with reduced total utilization",
+        "impact": "Simplifies management, coordinates resource usage",
+    })
+
+    return suggestions
+
+
+def _calculate_conflict_severity(total_utilization: float) -> str:
+    """Calculate severity of conflict based on over-utilization."""
+    if total_utilization > 200:
+        return "critical"
+    elif total_utilization > 150:
+        return "high"
+    elif total_utilization > 120:
+        return "medium"
+    else:
+        return "low"
 
 
 def _times_overlap(start1, end1, start2, end2) -> bool:
@@ -310,10 +464,7 @@ def manage_cycles() -> dict[str, Any]:
     3. Ensures cycles are created in the correct timezone
 
     Returns:
-        Dictionary with statistics:
-            - projects_evaluated: Number of projects checked
-            - cycles_created: Number of new cycles created
-            - errors: Number of errors encountered
+        Dictionary with statistics
     """
     stats = {
         "projects_evaluated": 0,
@@ -368,19 +519,13 @@ def manage_cycles() -> dict[str, Any]:
     return stats
 
 
-def _should_create_cycle(project: Project, cycle_duration: str, now: datetime, tz) -> tuple[bool, datetime, datetime]:
-    """
-    Determine if a new cycle should be created and calculate its dates.
-
-    Args:
-        project: The project to check
-        cycle_duration: Duration string ("5h", "24h", "7d")
-        now: Current datetime in project timezone
-        tz: Project timezone
-
-    Returns:
-        Tuple of (should_create, start_date, end_date)
-    """
+def _should_create_cycle(
+    project: Project,
+    cycle_duration: str,
+    now: datetime,
+    tz
+) -> tuple[bool, datetime, datetime]:
+    """Determine if a new cycle should be created and calculate its dates."""
     # Get the latest cycle for this project
     latest_cycle = Cycle.objects.filter(
         project=project,
@@ -415,27 +560,47 @@ def _should_create_cycle(project: Project, cycle_duration: str, now: datetime, t
 @shared_task
 def post_dispatch_analysis(project_id: str, work_item_id: str) -> dict[str, Any]:
     """
-    Stub task for post-dispatch analysis.
+    Post-dispatch analysis: audit work-item completeness and log violations.
 
-    In a full implementation, this would:
-    - Analyze the session outcome
-    - Update project metrics
-    - Trigger follow-up work if needed
-    - Update goal KPIs
-
-    Args:
-        project_id: The project ID
-        work_item_id: The work item (Issue) ID
-
-    Returns:
-        Dictionary with analysis results (currently stubbed)
+    Runs after every dispatch to catch metadata gaps early rather than
+    discovering them after a story is marked done.
     """
+    from plane.app.orchestrator.lifecycle import audit_work_item
+    from plane.db.models import Issue
+
     logger.info(f"Post-dispatch analysis triggered for project {project_id}, work_item {work_item_id}")
 
-    # TODO: Implement actual analysis logic in Phase 5
-    return {
-        "project_id": project_id,
-        "work_item_id": work_item_id,
-        "status": "stubbed",
-        "message": "Post-dispatch analysis not yet implemented",
-    }
+    try:
+        issue = Issue.objects.select_related("state", "project", "workspace").filter(
+            id=work_item_id, deleted_at__isnull=True
+        ).first()
+        if issue is None:
+            return {"project_id": project_id, "work_item_id": work_item_id, "status": "not_found"}
+
+        report = audit_work_item(issue)
+
+        if report.violations:
+            logger.warning(
+                "Post-dispatch audit found %d violations on %s: %s",
+                len(report.violations),
+                work_item_id,
+                "; ".join(v.message for v in report.violations),
+            )
+
+        return {
+            "project_id": project_id,
+            "work_item_id": work_item_id,
+            "status": "audited",
+            "violations": [
+                {"field": v.field, "message": v.message, "severity": v.severity}
+                for v in report.violations
+            ],
+        }
+    except Exception as exc:
+        logger.exception(f"Post-dispatch analysis failed for {work_item_id}")
+        return {
+            "project_id": project_id,
+            "work_item_id": work_item_id,
+            "status": "error",
+            "error": str(exc),
+        }

@@ -89,7 +89,7 @@ export default {
       already_have_an_account: "Sudah punya akun?",
       login: "Masuk",
       create_account: "Buat akun",
-      new_to_plane: "Baru di Cyrus?",
+      new_to_Cyrus: "Baru di Cyrus?",
       back_to_sign_in: "Kembali ke halaman masuk",
       resend_in: "Kirim ulang dalam {seconds} detik",
       sign_in_with_unique_code: "Masuk dengan kode unik",
@@ -412,7 +412,7 @@ export default {
   full_changelog: "Changelog lengkap",
   support: "Dukungan",
   forum: "Forum",
-  powered_by_plane_pages: "Ditenagai oleh Cyrus Pages",
+  powered_by_Cyrus_pages: "Ditenagai oleh Cyrus Pages",
   please_select_at_least_one_invitation: "Silakan pilih setidaknya satu undangan.",
   please_select_at_least_one_invitation_description:
     "Silakan pilih setidaknya satu undangan untuk bergabung dengan ruang kerja.",
@@ -622,7 +622,7 @@ export default {
         issues: "Item kerja",
       },
     },
-    new_at_plane: {
+    new_at_Cyrus: {
       title: "Baru di Cyrus",
     },
     quick_tutorial: {
@@ -2649,7 +2649,7 @@ export default {
     edited_by: "Disunting oleh",
   },
   self_hosted_maintenance_message: {
-    plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start:
+    Cyrus_didnt_start_up_this_could_be_because_one_or_more_Cyrus_services_failed_to_start:
       "Cyrus tidak berhasil dimulai. Ini bisa karena satu atau lebih layanan Cyrus gagal untuk dimulai.",
     choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure:
       "Pilih View Logs dari setup.sh dan log Docker untuk memastikan.",

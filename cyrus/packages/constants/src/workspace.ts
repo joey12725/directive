@@ -220,9 +220,50 @@ export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS: Record<string, IWorkspa
     access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  // Cyrus navigation items
+  goals: {
+    key: "goals",
+    labelTranslationKey: "Goals",
+    href: `/goals/`,
+    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  agents: {
+    key: "agents",
+    labelTranslationKey: "Agents",
+    href: `/agents/`,
+    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  pools: {
+    key: "pools",
+    labelTranslationKey: "Compute Pools",
+    href: `/pools/`,
+    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  sessions: {
+    key: "sessions",
+    labelTranslationKey: "Sessions",
+    href: `/sessions/`,
+    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    highlight: (pathname: string, url: string) => pathname.includes(url),
+  },
+  "cyrus-settings": {
+    key: "cyrus_settings",
+    labelTranslationKey: "Cyrus Settings",
+    href: `/settings/cyrus/`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, url: string) => pathname.includes("/settings/cyrus"),
+  },
 };
 
 export const WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS: IWorkspaceSidebarNavigationItem[] = [
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["goals"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["agents"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["pools"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["sessions"],
+  WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["cyrus-settings"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["views"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["analytics"],
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS["archives"],
@@ -232,9 +273,9 @@ export const WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS: Record<string, IWorkspac
   home: {
     key: "home",
     labelTranslationKey: "home.title",
-    href: `/`,
+    href: `/dashboard/`,
     access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER, EUserWorkspaceRoles.GUEST],
-    highlight: (pathname: string, url: string) => pathname === url,
+    highlight: (pathname: string, url: string) => pathname.includes("/dashboard"),
   },
   inbox: {
     key: "inbox",

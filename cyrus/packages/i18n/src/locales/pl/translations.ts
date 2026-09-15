@@ -89,7 +89,7 @@ export default {
       already_have_an_account: "Masz już konto?",
       login: "Zaloguj się",
       create_account: "Utwórz konto",
-      new_to_plane: "Nowy w Cyrus?",
+      new_to_Cyrus: "Nowy w Cyrus?",
       back_to_sign_in: "Powrót do logowania",
       resend_in: "Wyślij ponownie za {seconds} sekund",
       sign_in_with_unique_code: "Zaloguj się za pomocą unikalnego kodu",
@@ -407,7 +407,7 @@ export default {
   full_changelog: "Pełny dziennik zmian",
   support: "Wsparcie",
   forum: "Forum",
-  powered_by_plane_pages: "Oparte na Cyrus Pages",
+  powered_by_Cyrus_pages: "Oparte na Cyrus Pages",
   please_select_at_least_one_invitation: "Wybierz co najmniej jedno zaproszenie.",
   please_select_at_least_one_invitation_description:
     "Wybierz co najmniej jedno zaproszenie, aby dołączyć do przestrzeni roboczej.",
@@ -618,7 +618,7 @@ export default {
         issues: "Elementy pracy",
       },
     },
-    new_at_plane: {
+    new_at_Cyrus: {
       title: "Co nowego w Cyrus",
     },
     quick_tutorial: {
@@ -899,7 +899,7 @@ export default {
     admins: "Administratorzy",
     guests: "Goście",
     on_track: "Na dobrej drodze",
-    off_track: "Poza planem",
+    off_track: "Poza Cyrusm",
     at_risk: "W zagrożeniu",
     timeline: "Oś czasu",
     completion: "Zakończenie",
@@ -2617,7 +2617,7 @@ export default {
     edited_by: "Edytowane przez",
   },
   self_hosted_maintenance_message: {
-    plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start:
+    Cyrus_didnt_start_up_this_could_be_because_one_or_more_Cyrus_services_failed_to_start:
       "Cyrus nie uruchomił się. Może to być spowodowane tym, że jedna lub więcej usług Cyrus nie mogła się uruchomić.",
     choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure:
       "Wybierz View Logs z setup.sh i logów Docker, aby mieć pewność.",

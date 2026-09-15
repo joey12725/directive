@@ -9,14 +9,19 @@ from django.utils import timezone
 
 from plane.app.metering.tracker import ComputeTracker
 from plane.app.sessions.tasks import meter_session, summarize_session, trace_session_to_langfuse
+from plane.app.orchestrator.lifecycle import WorkItemLifecycle
 from plane.db.models import Agent, AgentStatus, ComputePool, CyrusSession, Goal, Issue, Project, SessionStatus, State
 from plane.db.models.state import StateGroup
 
 logger = logging.getLogger(__name__)
 
+_lifecycle = WorkItemLifecycle()
+
 
 class ACPXDispatcher:
     """Dispatch prompts to a remote Cyrus Relay and persist the resulting session stream."""
+
+    DEFAULT_TIMEOUT_SECONDS = 600
 
     def __init__(
         self,
@@ -34,6 +39,44 @@ class ACPXDispatcher:
         self.goal = goal or project.goal
         self.tracker = ComputeTracker(pool=pool)
 
+        # Configurable timeout: agent config > pool config > default
+        self.timeout = self._get_timeout()
+
+    def _get_timeout(self) -> int:
+        """Get timeout from agent config, pool config, or default."""
+        # Check agent config first
+        if self.agent.config and isinstance(self.agent.config, dict):
+            timeout = self.agent.config.get("timeout_seconds")
+            if timeout is not None:
+                try:
+                    return int(timeout)
+                except (ValueError, TypeError):
+                    pass
+
+        # Check pool config
+        if hasattr(self.pool, 'config') and isinstance(self.pool.config, dict):
+            timeout = self.pool.config.get("timeout_seconds")
+            if timeout is not None:
+                try:
+                    return int(timeout)
+                except (ValueError, TypeError):
+                    pass
+
+        return self.DEFAULT_TIMEOUT_SECONDS
+
+    def _log_context(self) -> dict[str, Any]:
+        """Build structured logging context."""
+        return {
+            "agent_id": str(self.agent.id),
+            "agent_name": self.agent.name,
+            "pool_id": str(self.pool.id),
+            "pool_name": self.pool.name,
+            "project_id": str(self.project.id),
+            "project_name": self.project.name,
+            "work_item_id": str(self.work_item.id) if self.work_item else None,
+            "goal_id": str(self.goal.id) if self.goal else None,
+        }
+
     def dispatch(self, prompt: str, session_name: str | None = None, one_shot: bool = False) -> CyrusSession:
         session = self._create_session()
         session_name = session_name or self._build_session_name(session)
@@ -46,6 +89,19 @@ class ACPXDispatcher:
         }
         request_url = f"{self.agent.relay_url.rstrip('/')}{'/exec' if one_shot else '/dispatch'}"
 
+        log_context = {
+            **self._log_context(),
+            "session_id": str(session.id),
+            "session_name": session_name,
+            "one_shot": one_shot,
+            "timeout": self.timeout,
+        }
+
+        logger.info(
+            "Starting dispatch",
+            extra=log_context
+        )
+
         self._mark_work_item_in_progress()
 
         try:
@@ -54,11 +110,19 @@ class ACPXDispatcher:
             else:
                 self._dispatch_stream(session=session, request_url=request_url, headers=headers, payload=payload)
         except requests.ConnectionError as exc:
+            logger.error(
+                "Connection error during dispatch",
+                extra={**log_context, "error": str(exc)}
+            )
             session.status = SessionStatus.FAILED
             session.outcome = {"error": str(exc), "kind": "connection_error"}
             self.agent.status = AgentStatus.OFFLINE
             self.agent.save(update_fields=["status", "updated_at"])
         except requests.Timeout as exc:
+            logger.error(
+                "Timeout during dispatch",
+                extra={**log_context, "error": str(exc), "timeout_seconds": self.timeout}
+            )
             session.status = SessionStatus.FAILED
             session.outcome = {"error": str(exc), "kind": "timeout"}
             self.agent.status = AgentStatus.OFFLINE
@@ -66,19 +130,34 @@ class ACPXDispatcher:
         except requests.HTTPError as exc:
             response = exc.response
             status_code = response.status_code if response is not None else None
+            logger.error(
+                "HTTP error during dispatch",
+                extra={**log_context, "error": str(exc), "status_code": status_code}
+            )
             session.outcome = {"error": str(exc), "status_code": status_code, "kind": "http_error"}
             if status_code == 429:
                 session.status = SessionStatus.RATE_LIMITED
                 session.was_rate_limited = True
                 self._record_rate_limit_event(session, {"type": "http_429", "status_code": 429})
+                logger.warning(
+                    "Rate limit hit during dispatch",
+                    extra={**log_context, "status_code": status_code}
+                )
             else:
                 session.status = SessionStatus.FAILED
         except Exception as exc:
-            logger.exception("Unexpected relay dispatch failure")
+            logger.exception(
+                "Unexpected relay dispatch failure",
+                extra=log_context
+            )
             session.status = SessionStatus.FAILED
             session.outcome = {"error": str(exc), "kind": "unexpected_error"}
         finally:
             self._finalize_session(session)
+            logger.info(
+                "Dispatch completed",
+                extra={**log_context, "status": session.status, "duration_seconds": session.duration_seconds}
+            )
 
         return session
 
@@ -90,7 +169,7 @@ class ACPXDispatcher:
         headers: dict[str, str],
         payload: dict[str, Any],
     ) -> None:
-        response = requests.post(request_url, headers=headers, json=payload, stream=True, timeout=600)
+        response = requests.post(request_url, headers=headers, json=payload, stream=True, timeout=self.timeout)
         response.raise_for_status()
 
         event_log: list[dict[str, Any]] = []
@@ -103,7 +182,10 @@ class ACPXDispatcher:
             try:
                 event = json.loads(raw_line)
             except json.JSONDecodeError:
-                logger.debug("Ignoring malformed relay chunk", extra={"chunk": raw_line})
+                logger.debug(
+                    "Ignoring malformed relay chunk",
+                    extra={**self._log_context(), "chunk": raw_line, "session_id": str(session.id)}
+                )
                 continue
 
             if not isinstance(event, dict):
@@ -115,16 +197,33 @@ class ACPXDispatcher:
             event_type = event.get("type")
             if event_type == "relay_exit":
                 relay_exit_code = self._coerce_int(event.get("code"))
+                logger.debug(
+                    "Relay exit",
+                    extra={**self._log_context(), "session_id": str(session.id), "exit_code": relay_exit_code}
+                )
             elif event_type == "relay_error":
                 session.outcome = event
+                logger.warning(
+                    "Relay error event",
+                    extra={**self._log_context(), "session_id": str(session.id), "error": event}
+                )
 
             if self._is_rate_limit_event(event):
+                retry_after = self._extract_retry_after_seconds(event)
                 session.was_rate_limited = True
                 session.rate_limit_wait_seconds = max(
                     session.rate_limit_wait_seconds,
-                    self._extract_retry_after_seconds(event),
+                    retry_after,
                 )
                 self._record_rate_limit_event(session, event)
+                logger.warning(
+                    "Rate limit event in stream",
+                    extra={
+                        **self._log_context(),
+                        "session_id": str(session.id),
+                        "retry_after_seconds": retry_after
+                    }
+                )
 
         session.event_log = event_log
 
@@ -143,14 +242,20 @@ class ACPXDispatcher:
         headers: dict[str, str],
         payload: dict[str, Any],
     ) -> None:
-        response = requests.post(request_url, headers=headers, json=payload, timeout=600)
+        response = requests.post(request_url, headers=headers, json=payload, timeout=self.timeout)
         response.raise_for_status()
         outcome = response.json()
+
+        exit_code = self._coerce_int(outcome.get("code"))
+        logger.debug(
+            "One-shot execution completed",
+            extra={**self._log_context(), "session_id": str(session.id), "exit_code": exit_code}
+        )
 
         event = {"type": "exec_result", **outcome}
         session.event_log = [event]
         session.outcome = outcome
-        session.status = SessionStatus.COMPLETED if self._coerce_int(outcome.get("code")) == 0 else SessionStatus.FAILED
+        session.status = SessionStatus.COMPLETED if exit_code == 0 else SessionStatus.FAILED
         self._extract_session_metadata(session, event)
 
     def _create_session(self) -> CyrusSession:
@@ -164,19 +269,18 @@ class ACPXDispatcher:
         )
 
     def _mark_work_item_in_progress(self) -> None:
-        in_progress_state = (
-            State.objects.filter(project=self.project, group=StateGroup.STARTED.value).order_by("sequence").first()
+        actor = self.project.workspace.owner if self.project and self.project.workspace_id else None
+        report = _lifecycle.start(
+            self.work_item,
+            agent=self.agent,
+            actor=actor,
         )
-        if in_progress_state is None:
-            in_progress_state = (
-                State.objects.filter(project=self.project, name__iexact="In Progress").order_by("sequence").first()
+        if report.violations:
+            logger.warning(
+                "Work item %s started with violations: %s",
+                self.work_item.id,
+                "; ".join(v.message for v in report.violations),
             )
-
-        if in_progress_state is None or self.work_item.state_id == in_progress_state.id:
-            return
-
-        self.work_item.state = in_progress_state
-        self.work_item.save(update_fields=["state", "completed_at", "updated_at"])
 
     def _finalize_session(self, session: CyrusSession) -> None:
         session.ended_at = timezone.now()

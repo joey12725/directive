@@ -75,3 +75,12 @@ from .cyrus import (
     ScheduleRowViewSet,
     ScheduleViewSet,
 )
+from .dashboard_metrics import (
+    AgentHealthView,
+    AllocationHealthView,
+    DashboardMetricsView,
+    GoalProgressView,
+    PoolBudgetsView,
+    RateLimitEventsView,
+    SchedulingDecisionsView,
+)

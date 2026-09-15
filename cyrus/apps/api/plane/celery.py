@@ -77,6 +77,31 @@ app.conf.beat_schedule = {
         "task": "plane.bgtasks.exporter_expired_task.delete_old_s3_link",
         "schedule": crontab(hour=3, minute=45),  # UTC 03:45
     },
+    "cyrus-visionary-ideation-loop": {
+        "task": "plane.app.orchestrator.loop_tasks.visionary_ideation_loop",
+        "schedule": crontab(minute="*/30"),
+        "args": (os.environ.get("CYRUS_DEFAULT_WORKSPACE_ID", ""),),
+    },
+    "cyrus-backlog-grooming-loop": {
+        "task": "plane.app.orchestrator.loop_tasks.backlog_grooming_loop",
+        "schedule": crontab(minute="10", hour="*/2"),
+        "args": (os.environ.get("CYRUS_DEFAULT_WORKSPACE_ID", ""),),
+    },
+    "cyrus-janitor-triage-loop": {
+        "task": "plane.app.orchestrator.loop_tasks.janitor_triage_loop",
+        "schedule": crontab(minute="25", hour="*/4"),
+        "args": (os.environ.get("CYRUS_DEFAULT_WORKSPACE_ID", ""),),
+    },
+    "cyrus-alignment-audit-loop": {
+        "task": "plane.app.orchestrator.loop_tasks.audit_alignment_loop",
+        "schedule": crontab(hour="8", minute="0"),
+        "args": (os.environ.get("CYRUS_DEFAULT_WORKSPACE_ID", ""),),
+    },
+    "cyrus-archivist-wiki-loop": {
+        "task": "plane.app.wiki_sync.tasks.archivist_wiki_loop",
+        "schedule": crontab(minute="45", hour="*/6"),
+        "args": (os.environ.get("CYRUS_DEFAULT_WORKSPACE_ID", ""),),
+    },
 }
 
 

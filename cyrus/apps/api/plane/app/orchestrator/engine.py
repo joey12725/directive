@@ -1,15 +1,4 @@
-"""
-Orchestrator Stub - Phase 4
-
-This is a temporary stub implementation of the Orchestrator class to prevent ImportError
-while Phase 4 (Scheduling Engine) is being used. The full Orchestrator implementation
-will be completed in Phase 5 (The Cyrus Agent).
-
-The Orchestrator is responsible for:
-- Selecting the next work item from a project's backlog
-- Composing dispatch prompts based on work context and intensity
-- Managing the intelligent routing of work to agents
-"""
+"""Core orchestration helpers for Cyrus Phase 5."""
 
 from __future__ import annotations
 
@@ -23,19 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 class Orchestrator:
-    """
-    Stub Orchestrator for work item selection and prompt composition.
-
-    This class provides minimal functionality to allow Phase 4 to operate
-    without the full Cyrus Agent implementation from Phase 5.
-    """
+    """Select work and compose prompts for Cyrus worker dispatch."""
 
     def select_work_item(self, project: Project) -> Issue | None:
         """
         Select the next work item (Issue) from a project's backlog.
 
-        This stub implementation returns the first open Issue in the project.
-        If no issues exist, it creates a dummy one to prevent errors.
+        Returns the oldest actionable issue in the project backlog.
 
         Args:
             project: The Project to select work from
@@ -68,13 +51,6 @@ class Orchestrator:
         """
         Compose a dispatch prompt for the agent based on the work item and intensity.
 
-        This stub implementation returns a basic prompt string. The full implementation
-        in Phase 5 will include:
-        - Context gathering from related issues, PRs, and documentation
-        - Intensity-specific instruction tuning
-        - Goal alignment and KPI tracking instructions
-        - Tool usage guidelines
-
         Args:
             work_item: The Issue to work on
             intensity: Dispatch intensity ("conservative", "normal", "aggressive")
@@ -85,7 +61,6 @@ class Orchestrator:
         if not work_item:
             return "No work item provided. Please check the project backlog."
 
-        # Build a basic prompt
         intensity_instructions = {
             "conservative": "Work carefully and conservatively. Minimize token usage and avoid risky operations.",
             "normal": "Work at a normal pace with standard best practices.",
@@ -97,17 +72,19 @@ class Orchestrator:
         prompt = f"""
 {instruction}
 
+You are working inside Cyrus, an autonomous agent orchestration platform.
+Prefer local scripts and repository context. Do not assume MCP exists.
+
 Work Item: {work_item.name}
 Project: {work_item.project.name if work_item.project else "Unknown"}
+Goal: {getattr(work_item.project.goal, 'name', 'No active goal') if work_item.project else 'Unknown'}
 
 Description:
-{work_item.description or "No description provided."}
+{work_item.description_stripped or "No description provided."}
 
-Please analyze this work item and begin implementation. Follow the project's coding standards
-and create tests where appropriate.
-
-Note: This is a stub prompt from the Phase 4 Orchestrator. Phase 5 will provide enhanced
-context and goal-specific instructions.
+- Verify the repo and environment before making changes.
+- Use robust error handling and validate behavior after writing code.
+- Track deliverables, summaries, and token-sensitive decisions clearly.
 """.strip()
 
         logger.info(
@@ -121,9 +98,7 @@ context and goal-specific instructions.
         """
         Create a dummy issue for projects with no open work items.
 
-        This prevents the scheduling engine from failing when a project has no issues.
-        In a production system, this would instead signal that the project is complete
-        or needs user input.
+        This preserves the Phase 4 scheduler behavior when no issues exist.
 
         Args:
             project: The project to create the issue in

@@ -89,7 +89,7 @@ export default {
       already_have_an_account: "Đã có tài khoản?",
       login: "Đăng nhập",
       create_account: "Tạo tài khoản",
-      new_to_plane: "Lần đầu sử dụng Cyrus?",
+      new_to_Cyrus: "Lần đầu sử dụng Cyrus?",
       back_to_sign_in: "Quay lại đăng nhập",
       resend_in: "Gửi lại sau {seconds} giây",
       sign_in_with_unique_code: "Đăng nhập bằng mã duy nhất",
@@ -413,7 +413,7 @@ export default {
   full_changelog: "Nhật ký thay đổi đầy đủ",
   support: "Hỗ trợ",
   forum: "Forum",
-  powered_by_plane_pages: "Được hỗ trợ bởi Cyrus Pages",
+  powered_by_Cyrus_pages: "Được hỗ trợ bởi Cyrus Pages",
   please_select_at_least_one_invitation: "Vui lòng chọn ít nhất một lời mời.",
   please_select_at_least_one_invitation_description:
     "Vui lòng chọn ít nhất một lời mời để tham gia không gian làm việc.",
@@ -626,7 +626,7 @@ export default {
         issues: "Mục công việc",
       },
     },
-    new_at_plane: {
+    new_at_Cyrus: {
       title: "Tính năng mới của Cyrus",
     },
     quick_tutorial: {
@@ -2650,7 +2650,7 @@ export default {
     edited_by: "Được chỉnh sửa bởi",
   },
   self_hosted_maintenance_message: {
-    plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start:
+    Cyrus_didnt_start_up_this_could_be_because_one_or_more_Cyrus_services_failed_to_start:
       "Cyrus không khởi động được. Điều này có thể do một hoặc nhiều dịch vụ Cyrus không khởi động được.",
     choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure: "Chọn View Logs từ setup.sh và log Docker để chắc chắn.",
   },

@@ -6,17 +6,24 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from plane.api.views import (
+    AgentHealthView,
     AgentViewSet,
+    AllocationHealthView,
     ApprovalViewSet,
     ComputeAllocationViewSet,
     ComputePoolViewSet,
     CyrusSessionViewSet,
+    DashboardMetricsView,
     GoalKPIViewSet,
+    GoalProgressView,
     GoalViewSet,
     ModelTierConfigViewSet,
+    PoolBudgetsView,
     PoolUsageRecordViewSet,
+    RateLimitEventsView,
     ScheduleRowViewSet,
     ScheduleViewSet,
+    SchedulingDecisionsView,
 )
 
 router = DefaultRouter()
@@ -34,4 +41,12 @@ router.register(r"model-tier-configs", ModelTierConfigViewSet, basename="workspa
 
 urlpatterns = [
     path("workspaces/<str:slug>/", include(router.urls)),
+    # Dashboard metrics endpoints
+    path("workspaces/<str:slug>/dashboard/metrics/", DashboardMetricsView.as_view(), name="workspace-dashboard-metrics"),
+    path("workspaces/<str:slug>/dashboard/agent-health/", AgentHealthView.as_view(), name="workspace-dashboard-agent-health"),
+    path("workspaces/<str:slug>/dashboard/pool-budgets/", PoolBudgetsView.as_view(), name="workspace-dashboard-pool-budgets"),
+    path("workspaces/<str:slug>/dashboard/scheduling/", SchedulingDecisionsView.as_view(), name="workspace-dashboard-scheduling"),
+    path("workspaces/<str:slug>/dashboard/rate-limits/", RateLimitEventsView.as_view(), name="workspace-dashboard-rate-limits"),
+    path("workspaces/<str:slug>/dashboard/goals/", GoalProgressView.as_view(), name="workspace-dashboard-goals"),
+    path("workspaces/<str:slug>/dashboard/allocation-health/", AllocationHealthView.as_view(), name="workspace-dashboard-allocation-health"),
 ]

@@ -4,6 +4,7 @@
 
 import json
 from decimal import Decimal
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -275,3 +276,129 @@ def test_check_agent_health_updates_statuses(workspace, api_billing_pool):
     assert timeout_agent.status == AgentStatus.OFFLINE
     assert healthy_agent.last_heartbeat is not None
     assert timeout_agent.last_heartbeat is not None
+
+
+@pytest.mark.django_db
+def test_dispatcher_stream_records_codex_cli_usage_tracking(cyrus_project, agent):
+    response = MagicMock()
+    response.status_code = 200
+    response.raise_for_status.return_value = None
+    response.iter_lines.return_value = [
+        json.dumps({"type": "thread.started", "thread_id": "codex-thread-1"}),
+        json.dumps({
+            "type": "item.completed",
+            "item": {"type": "agent_message", "text": "Done."},
+        }),
+        json.dumps(
+            {
+                "type": "done",
+                "session_id": "codex-thread-1",
+                "model": "codex",
+                "provider": "openai",
+                "usage": {
+                    "input_tokens": 240,
+                    "output_tokens": 60,
+                    "total_tokens": 300,
+                    "cache_read_input_tokens": 180,
+                },
+            }
+        ),
+        json.dumps({"type": "relay_exit", "code": 0}),
+    ]
+
+    dispatcher = ACPXDispatcher(
+        agent=agent,
+        pool=agent.pool,
+        project=cyrus_project["project"],
+        work_item=cyrus_project["issue"],
+    )
+
+    with patch("plane.app.agents.dispatcher.requests.post", return_value=response), patch(
+        "plane.app.agents.dispatcher.summarize_session.delay"
+    ), patch("plane.app.agents.dispatcher.trace_session_to_langfuse.delay"), patch(
+        "plane.app.agents.dispatcher.meter_session.delay"
+    ):
+        session = dispatcher.dispatch("Track Codex usage.")
+
+    session.refresh_from_db()
+    usage_record = PoolUsageRecord.objects.get(pool=agent.pool, session_id="codex-thread-1")
+    event_log = cast(list[dict[str, Any]], session.event_log)
+
+    assert session.status == SessionStatus.COMPLETED
+    assert session.acpx_session_id == "codex-thread-1"
+    assert session.model_name == "codex"
+    assert session.input_tokens == 240
+    assert session.output_tokens == 60
+    assert session.total_tokens == 300
+    assert event_log[2]["usage"]["cache_read_input_tokens"] == 180
+    assert usage_record.input_tokens == 240
+    assert usage_record.output_tokens == 60
+    assert usage_record.total_tokens == 300
+    assert usage_record.estimated_cost_usd == Decimal("0.000360")
+
+
+@pytest.mark.django_db
+def test_dispatcher_stream_records_opencode_usage_tracking(cyrus_project, workspace, api_billing_pool):
+    agent = Agent.objects.create(
+        workspace=workspace,
+        name="OpenCode Agent",
+        agent_type="opencode",
+        relay_url="https://relay.example.com",
+        relay_secret="secret",
+        acpx_agent_name="opencode",
+        pool=api_billing_pool,
+        status=AgentStatus.ONLINE,
+    )
+
+    response = MagicMock()
+    response.status_code = 200
+    response.raise_for_status.return_value = None
+    response.iter_lines.return_value = [
+        json.dumps({"type": "agent_message_chunk", "text": "DONE"}),
+        json.dumps(
+            {
+                "type": "done",
+                "session_id": "opencode-session-1",
+                "model": "gpt-5.4",
+                "provider": "openai",
+                "usage": {
+                    "input_tokens": 500,
+                    "output_tokens": 50,
+                    "total_tokens": 550,
+                    "cache_read_input_tokens": 400,
+                    "reasoning_tokens": 25,
+                },
+            }
+        ),
+        json.dumps({"type": "relay_exit", "code": 0}),
+    ]
+
+    dispatcher = ACPXDispatcher(
+        agent=agent,
+        pool=agent.pool,
+        project=cyrus_project["project"],
+        work_item=cyrus_project["issue"],
+    )
+
+    with patch("plane.app.agents.dispatcher.requests.post", return_value=response), patch(
+        "plane.app.agents.dispatcher.summarize_session.delay"
+    ), patch("plane.app.agents.dispatcher.trace_session_to_langfuse.delay"), patch(
+        "plane.app.agents.dispatcher.meter_session.delay"
+    ):
+        session = dispatcher.dispatch("Track OpenCode usage.")
+
+    session.refresh_from_db()
+    usage_record = PoolUsageRecord.objects.get(pool=agent.pool, session_id="opencode-session-1")
+    event_log = cast(list[dict[str, Any]], session.event_log)
+
+    assert session.status == SessionStatus.COMPLETED
+    assert session.acpx_session_id == "opencode-session-1"
+    assert session.model_name == "gpt-5.4"
+    assert session.input_tokens == 500
+    assert session.output_tokens == 50
+    assert session.total_tokens == 550
+    assert any(event.get("usage", {}).get("cache_read_input_tokens") == 400 for event in event_log)
+    assert usage_record.input_tokens == 500
+    assert usage_record.output_tokens == 50
+    assert usage_record.total_tokens == 550
+    assert usage_record.estimated_cost_usd == Decimal("0.000600")

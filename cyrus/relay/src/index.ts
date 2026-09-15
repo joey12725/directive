@@ -4,6 +4,22 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { pathToFileURL } from "node:url";
+import {
+  buildCodexCommand,
+  buildCodexStatusCommand,
+  codexBinary,
+  normalizeCodexUsage,
+  parseCodexEvent,
+} from "./agents/codex.js";
+import {
+  accumulateOpenCodeUsage,
+  buildOpenCodeCommand,
+  buildOpenCodeStatusCommand,
+  normalizeOpenCodeUsage,
+  openCodeBinary,
+  parseOpenCodeEvent,
+  parseOpenCodeExport,
+} from "./agents/opencode.js";
 
 type DispatchBody = {
   agent?: string;
@@ -26,27 +42,28 @@ const defaultCwd = process.env.CYRUS_RELAY_DEFAULT_CWD || os.homedir();
 const acpxBinary = process.platform === "win32" ? "acpx.cmd" : "acpx";
 const openClawBinary = process.platform === "win32" ? "openclaw.cmd" : "openclaw";
 const claudeBinary = process.platform === "win32" ? "C:\\Users\\you\\.local\\bin\\claude.exe" : "claude";
-// On Windows, spawn node directly to avoid cmd.exe quoting issues
-const geminiBinary = process.platform === "win32"
-  ? "node"
-  : "gemini";
-const geminiArgs = process.platform === "win32"
-  ? [
-      "--no-warnings=DEP0040",
-      path.join(
-        os.homedir(),
-        "AppData",
-        "Roaming",
-        "npm",
-        "node_modules",
-        "@google",
-        "gemini-cli",
-        "dist",
-        "index.js"
-      ),
-    ]
-  : [];  // On Unix, "gemini" is the wrapper script
-const knownAgents = (process.env.CYRUS_RELAY_AGENT_LIST ?? "codex,claude,gemini,openclaw")
+// On Windows, spawn node directly to avoid cmd.exe quoting issues.
+// Use process.execPath so we use the same Node.js binary running the relay
+// rather than relying on "node" being resolvable in the child process PATH.
+const geminiBinary = process.platform === "win32" ? process.execPath : "gemini";
+const geminiArgs =
+  process.platform === "win32"
+    ? [
+        "--no-warnings=DEP0040",
+        path.join(
+          os.homedir(),
+          "AppData",
+          "Roaming",
+          "npm",
+          "node_modules",
+          "@google",
+          "gemini-cli",
+          "dist",
+          "index.js"
+        ),
+      ]
+    : []; // On Unix, "gemini" is the wrapper script
+const knownAgents = (process.env.CYRUS_RELAY_AGENT_LIST ?? "codex,claude,gemini,openclaw,opencode")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);
@@ -61,6 +78,9 @@ const isOpenClawAgent = (agent: string) => agent.trim().toLowerCase() === "openc
 const isNativeClaudeAgent = (agent: string) => agent.trim().toLowerCase() === "claude";
 const isGeminiAgent = (agent: string) =>
   agent.trim().toLowerCase() === "gemini" || agent.trim().toLowerCase() === "gemini-cli";
+const isCodexAgent = (agent: string) =>
+  agent.trim().toLowerCase() === "codex" || agent.trim().toLowerCase() === "codex-cli";
+const isOpenCodeAgent = (agent: string) => agent.trim().toLowerCase() === "opencode";
 const openClawSessionKey = process.env.CYRUS_OPENCLAW_SESSION_KEY ?? "agent:main:main";
 
 const quoteWindowsArg = (value: string) => {
@@ -184,17 +204,197 @@ const runToCompletion = async (command: string[], cwd: string) =>
     proc.on("close", (code) => resolve({ stdout, stderr, code }));
   });
 
+const collectCodexResult = async (prompt: string, cwd: string, approveAll = true) => {
+  const target = buildSpawnTarget([codexBinary, ...buildCodexCommand({ prompt, cwd, approve_all: approveAll })]);
+  const proc = spawn(target.file, target.args, {
+    cwd,
+    env: process.env,
+    shell: false,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  proc.stdin.end(prompt);
+
+  let buffer = "";
+  let stderr = "";
+  let outputText = "";
+  let usage = normalizeCodexUsage(undefined);
+  let sessionId: string | undefined;
+  let model = process.env.CYRUS_CODEX_MODEL ?? "codex";
+  const startedAt = Date.now();
+
+  await new Promise<void>((resolve, reject) => {
+    proc.stdout.on("data", (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.trim()) {
+          continue;
+        }
+
+        try {
+          const parsed = JSON.parse(line) as Record<string, unknown>;
+          const state = { startedAt, sessionId, model };
+          const events = parseCodexEvent(parsed, state);
+          sessionId = state.sessionId;
+          model = state.model;
+
+          for (const event of events) {
+            if (event.type === "agent_message_chunk") {
+              outputText = event.text;
+            } else if (event.type === "done") {
+              usage = event.usage;
+              sessionId = event.session_id;
+              model = event.model;
+            }
+          }
+        } catch (error) {
+          app.log.warn({ line, error }, "Failed to parse Codex stream event");
+        }
+      }
+    });
+
+    proc.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0 || code === null) {
+        resolve();
+      } else {
+        reject(new Error(stderr.trim() || `Codex CLI exited with code ${code}`));
+      }
+    });
+
+    proc.on("error", (error) => reject(error));
+  });
+
+  return {
+    outputText,
+    usage,
+    sessionId,
+    model,
+    durationMs: Date.now() - startedAt,
+  };
+};
+
+const loadOpenCodeSessionInfo = async (cwd: string, sessionId?: string) => {
+  if (!sessionId) {
+    return {} as ReturnType<typeof parseOpenCodeExport>;
+  }
+
+  const proc = spawn(openCodeBinary, ["export", sessionId], {
+    cwd,
+    env: process.env,
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let stdout = "";
+  proc.stdout.on("data", (chunk) => {
+    stdout += chunk.toString();
+  });
+
+  const code = await new Promise<number>((resolve) => {
+    proc.on("close", (value) => resolve(value ?? 1));
+    proc.on("error", () => resolve(1));
+  });
+
+  if (code !== 0) {
+    return {} as ReturnType<typeof parseOpenCodeExport>;
+  }
+
+  return parseOpenCodeExport(stdout);
+};
+
+const collectOpenCodeResult = async (prompt: string, cwd: string) => {
+  const proc = spawn(openCodeBinary, buildOpenCodeCommand({ prompt, cwd }), {
+    cwd,
+    env: process.env,
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  let buffer = "";
+  let stderr = "";
+  let outputText = "";
+  let sessionId: string | undefined;
+  let usage = {
+    input_tokens: 0,
+    output_tokens: 0,
+    total_tokens: 0,
+    cache_read_input_tokens: 0,
+    cache_creation_input_tokens: 0,
+    reasoning_tokens: 0,
+  };
+  const startedAt = Date.now();
+
+  await new Promise<void>((resolve, reject) => {
+    proc.stdout.on("data", (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        try {
+          const parsed = JSON.parse(line) as { sessionID?: string };
+          sessionId = parsed.sessionID ?? sessionId;
+          usage = accumulateOpenCodeUsage(usage, parsed as never);
+
+          for (const event of parseOpenCodeEvent(parsed)) {
+            if (event.type === "agent_message_chunk") {
+              outputText += event.text;
+            }
+          }
+        } catch (error) {
+          app.log.warn({ line, error }, "Failed to parse OpenCode stream event");
+        }
+      }
+    });
+
+    proc.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (code === 0 || code === null) {
+        resolve();
+      } else {
+        reject(new Error(stderr.trim() || `OpenCode exited with code ${code}`));
+      }
+    });
+
+    proc.on("error", (error) => reject(error));
+  });
+
+  const sessionInfo = await loadOpenCodeSessionInfo(cwd, sessionId);
+
+  return {
+    outputText,
+    usage: normalizeOpenCodeUsage(usage),
+    sessionId,
+    model: sessionInfo.model ?? process.env.CYRUS_OPENCODE_MODEL ?? "unknown",
+    provider: sessionInfo.provider,
+    totalCostUsd: sessionInfo.totalCostUsd,
+    durationMs: Date.now() - startedAt,
+  };
+};
+
 type OpenClawSessionSnapshot = {
   key: string;
   sessionId?: string;
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
-  cacheReadTokens?: number;       // Cache read tokens (Anthropic)
-  cacheWriteTokens?: number;      // Cache write tokens (Anthropic)
-  reasoningTokens?: number;       // Reasoning tokens (o1, R1)
-  cost?: number;                  // Cost in USD (if available)
-  costUsd?: number;               // Alternative cost field name
+  cacheReadTokens?: number; // Cache read tokens (Anthropic)
+  cacheWriteTokens?: number; // Cache write tokens (Anthropic)
+  reasoningTokens?: number; // Reasoning tokens (o1, R1)
+  cost?: number; // Cost in USD (if available)
+  costUsd?: number; // Alternative cost field name
   model?: string;
   modelProvider?: string;
   contextTokens?: number;
@@ -300,9 +500,7 @@ const loadOpenClawGatewayHelper = async () => {
     openClawGatewayHelperPromise = (async () => {
       const distDir = await resolveOpenClawDistDir();
       const files = await fs.readdir(distDir);
-      const callModule = files
-        .filter((file) => /^call-.*\.js$/u.test(file))
-        .sort()[0];
+      const callModule = files.filter((file) => /^call-.*\.js$/u.test(file)).sort()[0];
 
       if (!callModule) {
         throw new Error("Unable to find the OpenClaw gateway helper module.");
@@ -422,9 +620,7 @@ const runOpenClawPrompt = async (prompt: string, cwd: string): Promise<OpenClawP
     );
 
     if (matchedUserIndex >= 0) {
-      latestAssistant = messages
-        .slice(matchedUserIndex + 1)
-        .find((entry) => entry.role === "assistant");
+      latestAssistant = messages.slice(matchedUserIndex + 1).find((entry) => entry.role === "assistant");
     }
 
     if (latestAssistant) {
@@ -455,24 +651,28 @@ const runOpenClawPrompt = async (prompt: string, cwd: string): Promise<OpenClawP
   );
 
   // Calculate cache token deltas (if available - Anthropic)
-  const cacheReadDelta = afterSnapshot?.cacheReadTokens !== undefined && beforeSnapshot?.cacheReadTokens !== undefined
-    ? Math.max(coerceNumber(afterSnapshot.cacheReadTokens) - coerceNumber(beforeSnapshot.cacheReadTokens), 0)
-    : undefined;
+  const cacheReadDelta =
+    afterSnapshot?.cacheReadTokens !== undefined && beforeSnapshot?.cacheReadTokens !== undefined
+      ? Math.max(coerceNumber(afterSnapshot.cacheReadTokens) - coerceNumber(beforeSnapshot.cacheReadTokens), 0)
+      : undefined;
 
-  const cacheWriteDelta = afterSnapshot?.cacheWriteTokens !== undefined && beforeSnapshot?.cacheWriteTokens !== undefined
-    ? Math.max(coerceNumber(afterSnapshot.cacheWriteTokens) - coerceNumber(beforeSnapshot.cacheWriteTokens), 0)
-    : undefined;
+  const cacheWriteDelta =
+    afterSnapshot?.cacheWriteTokens !== undefined && beforeSnapshot?.cacheWriteTokens !== undefined
+      ? Math.max(coerceNumber(afterSnapshot.cacheWriteTokens) - coerceNumber(beforeSnapshot.cacheWriteTokens), 0)
+      : undefined;
 
   // Calculate reasoning tokens delta (if available - o1, R1)
-  const reasoningDelta = afterSnapshot?.reasoningTokens !== undefined && beforeSnapshot?.reasoningTokens !== undefined
-    ? Math.max(coerceNumber(afterSnapshot.reasoningTokens) - coerceNumber(beforeSnapshot.reasoningTokens), 0)
-    : undefined;
+  const reasoningDelta =
+    afterSnapshot?.reasoningTokens !== undefined && beforeSnapshot?.reasoningTokens !== undefined
+      ? Math.max(coerceNumber(afterSnapshot.reasoningTokens) - coerceNumber(beforeSnapshot.reasoningTokens), 0)
+      : undefined;
 
   // Extract cost (if available)
   const cost = afterSnapshot?.cost ?? afterSnapshot?.costUsd;
-  const costDelta = cost !== undefined && beforeSnapshot?.cost !== undefined
-    ? Math.max(coerceNumber(cost) - coerceNumber(beforeSnapshot.cost), 0)
-    : cost;
+  const costDelta =
+    cost !== undefined && beforeSnapshot?.cost !== undefined
+      ? Math.max(coerceNumber(cost) - coerceNumber(beforeSnapshot.cost), 0)
+      : cost;
 
   return {
     sessionId: latestHistory.sessionId ?? afterSnapshot?.sessionId ?? beforeSnapshot?.sessionId ?? null,
@@ -629,6 +829,10 @@ app.get("/agents", async () => {
           command = [openClawBinary, "status"];
         } else if (isGeminiAgent(agent)) {
           command = [geminiBinary, ...geminiArgs, "--version"];
+        } else if (isOpenCodeAgent(agent)) {
+          command = [openCodeBinary, ...buildOpenCodeStatusCommand()];
+        } else if (isCodexAgent(agent)) {
+          command = [codexBinary, ...buildCodexStatusCommand()];
         } else {
           command = [acpxBinary, "--format", "json", agent, "status"];
         }
@@ -661,6 +865,10 @@ app.post<{ Body: DispatchBody }>("/dispatch", async (request, reply) => {
   }
 
   const cwd = normalizeCwd(request.body.cwd);
+
+  // Auto-create the working directory so agents don't crash on a missing path.
+  await fs.mkdir(cwd, { recursive: true });
+
   if (isOpenClawAgent(agent)) {
     const result = await runOpenClawPrompt(prompt, cwd);
 
@@ -693,6 +901,210 @@ app.post<{ Body: DispatchBody }>("/dispatch", async (request, reply) => {
     return reply;
   }
 
+  if (isCodexAgent(agent)) {
+    reply.raw.writeHead(200, {
+      "Content-Type": "application/x-ndjson",
+      "Transfer-Encoding": "chunked",
+    });
+
+    const target = buildSpawnTarget([
+      codexBinary,
+      ...buildCodexCommand({ prompt, cwd, approve_all: request.body.approve_all ?? true }),
+    ]);
+    const proc = spawn(target.file, target.args, {
+      cwd,
+      env: process.env,
+      shell: false,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    proc.stdin.end(prompt);
+
+    let buffer = "";
+    let stderr = "";
+    let sessionId: string | undefined;
+    let model = process.env.CYRUS_CODEX_MODEL ?? "codex";
+    const startedAt = Date.now();
+
+    proc.stdout.on("data", (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        try {
+          const parsed = JSON.parse(line) as Record<string, unknown>;
+          const state = { startedAt, sessionId, model };
+          const events = parseCodexEvent(parsed, state);
+          sessionId = state.sessionId;
+          model = state.model;
+
+          for (const event of events) {
+            reply.raw.write(`${JSON.stringify(event)}\n`);
+          }
+        } catch (error) {
+          app.log.warn({ line, error }, "Failed to parse Codex stream event");
+        }
+      }
+    });
+
+    proc.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+      app.log.warn({ stderr: chunk.toString() }, "codex stderr");
+    });
+
+    proc.on("close", (code) => {
+      if ((code ?? 0) !== 0 && stderr.trim()) {
+        reply.raw.write(
+          `${JSON.stringify({
+            type: "relay_error",
+            message: stderr.trim(),
+            timestamp: new Date().toISOString(),
+            cwd,
+            agent,
+          })}\n`
+        );
+      }
+
+      reply.raw.write(
+        `${JSON.stringify({
+          type: "relay_exit",
+          code: code ?? 0,
+          timestamp: new Date().toISOString(),
+          cwd,
+          agent,
+        })}\n`
+      );
+      reply.raw.end();
+    });
+
+    proc.on("error", (error) => {
+      reply.raw.write(
+        `${JSON.stringify({
+          type: "relay_error",
+          message: error.message,
+          timestamp: new Date().toISOString(),
+          cwd,
+          agent,
+        })}\n`
+      );
+      reply.raw.end();
+    });
+
+    return reply;
+  }
+
+  if (isOpenCodeAgent(agent)) {
+    reply.raw.writeHead(200, {
+      "Content-Type": "application/x-ndjson",
+      "Transfer-Encoding": "chunked",
+    });
+
+    const proc = spawn(openCodeBinary, buildOpenCodeCommand({ prompt, cwd }), {
+      cwd,
+      env: process.env,
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let buffer = "";
+    let stderr = "";
+    let sessionId: string | undefined;
+    let usage = {
+      input_tokens: 0,
+      output_tokens: 0,
+      total_tokens: 0,
+      cache_read_input_tokens: 0,
+      cache_creation_input_tokens: 0,
+      reasoning_tokens: 0,
+    };
+    const startedAt = Date.now();
+
+    proc.stdout.on("data", (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        try {
+          const parsed = JSON.parse(line) as { sessionID?: string };
+          sessionId = parsed.sessionID ?? sessionId;
+          usage = accumulateOpenCodeUsage(usage, parsed as never);
+
+          for (const event of parseOpenCodeEvent(parsed)) {
+            reply.raw.write(`${JSON.stringify(event)}\n`);
+          }
+        } catch (error) {
+          app.log.warn({ line, error }, "Failed to parse OpenCode stream event");
+        }
+      }
+    });
+
+    proc.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+      app.log.warn({ stderr: chunk.toString() }, "opencode stderr");
+    });
+
+    proc.on("close", async (code) => {
+      const sessionInfo = await loadOpenCodeSessionInfo(cwd, sessionId);
+
+      reply.raw.write(
+        `${JSON.stringify({
+          type: "done",
+          timestamp: new Date().toISOString(),
+          model: sessionInfo.model ?? process.env.CYRUS_OPENCODE_MODEL ?? "unknown",
+          provider: sessionInfo.provider,
+          session_id: sessionId ?? "unknown",
+          usage: normalizeOpenCodeUsage(usage),
+          total_cost_usd: sessionInfo.totalCostUsd,
+          duration_ms: Date.now() - startedAt,
+        })}\n`
+      );
+
+      if ((code ?? 0) !== 0 && stderr.trim()) {
+        reply.raw.write(
+          `${JSON.stringify({
+            type: "relay_error",
+            message: stderr.trim(),
+            timestamp: new Date().toISOString(),
+            cwd,
+            agent,
+          })}\n`
+        );
+      }
+
+      reply.raw.write(
+        `${JSON.stringify({
+          type: "relay_exit",
+          code: code ?? 0,
+          timestamp: new Date().toISOString(),
+          cwd,
+          agent,
+        })}\n`
+      );
+      reply.raw.end();
+    });
+
+    proc.on("error", (error) => {
+      reply.raw.write(
+        `${JSON.stringify({
+          type: "relay_error",
+          message: error.message,
+          timestamp: new Date().toISOString(),
+          cwd,
+          agent,
+        })}\n`
+      );
+      reply.raw.end();
+    });
+
+    return reply;
+  }
+
   // Native Gemini CLI integration
   if (isGeminiAgent(agent)) {
     reply.raw.writeHead(200, {
@@ -702,16 +1114,12 @@ app.post<{ Body: DispatchBody }>("/dispatch", async (request, reply) => {
 
     app.log.info({ agent, prompt: prompt.substring(0, 50) }, "Spawning Gemini");
 
-    const proc = spawn(
-      geminiBinary,
-      [...geminiArgs, "--prompt", prompt, "--output-format", "stream-json", "--yolo"],
-      {
-        cwd,
-        env: process.env,
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
-      }
-    );
+    const proc = spawn(geminiBinary, [...geminiArgs, "--prompt", prompt, "--output-format", "stream-json", "--yolo"], {
+      cwd,
+      env: process.env,
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     let buffer = "";
     let geminiModel = "unknown";
@@ -753,7 +1161,7 @@ app.post<{ Body: DispatchBody }>("/dispatch", async (request, reply) => {
                 usage: {
                   input_tokens: stats.input_tokens || 0,
                   output_tokens: stats.output_tokens || 0,
-                  total_tokens: stats.total_tokens || (stats.input_tokens + stats.output_tokens) || 0,
+                  total_tokens: stats.total_tokens || stats.input_tokens + stats.output_tokens || 0,
                   cache_read_input_tokens: stats.cached || 0,
                 },
                 duration_ms: stats.duration_ms,
@@ -806,16 +1214,12 @@ app.post<{ Body: DispatchBody }>("/dispatch", async (request, reply) => {
       "Transfer-Encoding": "chunked",
     });
 
-    const proc = spawn(
-      claudeBinary,
-      ["--print", "--output-format", "stream-json", "--verbose", prompt],
-      {
-        cwd,
-        env: process.env,
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
-      }
-    );
+    const proc = spawn(claudeBinary, ["--print", "--output-format", "stream-json", "--verbose", prompt], {
+      cwd,
+      env: process.env,
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     let buffer = "";
     let claudeModel = "claude-sonnet-4-5-20250929";
@@ -1032,18 +1436,45 @@ app.post<{ Body: ExecBody }>("/exec", async (request) => {
     return buildOpenClawExecResult(result);
   }
 
+  if (isCodexAgent(agent)) {
+    const result = await collectCodexResult(prompt, cwd);
+    return {
+      code: 0,
+      stdout: result.outputText,
+      stderr: "",
+      output_text: result.outputText,
+      session_id: result.sessionId,
+      model: result.model,
+      provider: "openai",
+      duration_ms: result.durationMs,
+      usage: result.usage,
+    };
+  }
+
+  if (isOpenCodeAgent(agent)) {
+    const result = await collectOpenCodeResult(prompt, cwd);
+    return {
+      code: 0,
+      stdout: result.outputText,
+      stderr: "",
+      output_text: result.outputText,
+      session_id: result.sessionId,
+      model: result.model,
+      provider: result.provider,
+      duration_ms: result.durationMs,
+      usage: result.usage,
+      total_cost_usd: result.totalCostUsd,
+    };
+  }
+
   // Native Gemini CLI integration
   if (isGeminiAgent(agent)) {
-    const proc = spawn(
-      geminiBinary,
-      [...geminiArgs, "--prompt", prompt, "--output-format", "stream-json", "--yolo"],
-      {
-        cwd,
-        env: process.env,
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
-      }
-    );
+    const proc = spawn(geminiBinary, [...geminiArgs, "--prompt", prompt, "--output-format", "stream-json", "--yolo"], {
+      cwd,
+      env: process.env,
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     // app.log.info({ target }, "Spawning Gemini"); // Removed logging of target as we don't use buildSpawnTarget here
 
@@ -1100,7 +1531,7 @@ app.post<{ Body: ExecBody }>("/exec", async (request) => {
       usage: {
         input_tokens: stats.input_tokens || 0,
         output_tokens: stats.output_tokens || 0,
-        total_tokens: stats.total_tokens || (stats.input_tokens + stats.output_tokens) || 0,
+        total_tokens: stats.total_tokens || stats.input_tokens + stats.output_tokens || 0,
         cache_read_input_tokens: stats.cached || 0,
       },
     };

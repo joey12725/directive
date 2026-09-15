@@ -100,3 +100,7 @@ session\ logs/
 # Specific project files
 CLAUDE.md
 nul
+
+# Local/private orchestration state
+.soul/
+workspace/

@@ -89,7 +89,7 @@ export default {
       already_have_an_account: "Já tem uma conta?",
       login: "Login",
       create_account: "Criar conta",
-      new_to_plane: "Novo no Cyrus?",
+      new_to_Cyrus: "Novo no Cyrus?",
       back_to_sign_in: "Voltar ao login",
       resend_in: "Reenviar em {seconds} segundos",
       sign_in_with_unique_code: "Login com código único",
@@ -416,7 +416,7 @@ export default {
   full_changelog: "Changelog completo",
   support: "Suporte",
   forum: "Forum",
-  powered_by_plane_pages: "Desenvolvido por Cyrus Pages",
+  powered_by_Cyrus_pages: "Desenvolvido por Cyrus Pages",
   please_select_at_least_one_invitation: "Selecione pelo menos um convite.",
   please_select_at_least_one_invitation_description:
     "Selecione pelo menos um convite para entrar no espaço de trabalho.",
@@ -629,7 +629,7 @@ export default {
         issues: "Itens de trabalho",
       },
     },
-    new_at_plane: {
+    new_at_Cyrus: {
       title: "Novidades no Cyrus",
     },
     quick_tutorial: {
@@ -917,7 +917,7 @@ export default {
     upcoming: "Próximo",
     completed: "Concluído",
     in_progress: "Em andamento",
-    planned: "Planejado",
+    planned: "Cyrusjado",
     paused: "Pausado",
     no_of: "Nº de {entity}",
     resolved: "Resolvido",
@@ -1348,7 +1348,7 @@ export default {
           comic: {
             title: "Tudo começa com um projeto no Cyrus",
             description:
-              "Um projeto pode ser o planejamento de um produto, uma campanha de marketing ou o lançamento de um novo carro.",
+              "Um projeto pode ser o Cyrusjamento de um produto, uma campanha de marketing ou o lançamento de um novo carro.",
           },
         },
       },
@@ -2008,7 +2008,7 @@ export default {
         short_title: "Ciclos",
         description: "Agende o trabalho em períodos flexíveis que se adaptam ao ritmo e ao tempo únicos deste projeto.",
         toggle_title: "Ativar ciclos",
-        toggle_description: "Planeje o trabalho em períodos de tempo focados.",
+        toggle_description: "Cyrusje o trabalho em períodos de tempo focados.",
       },
       modules: {
         title: "Módulos",
@@ -2628,7 +2628,7 @@ export default {
   project_modules: {
     status: {
       backlog: "Backlog",
-      planned: "Planejado",
+      planned: "Cyrusjado",
       in_progress: "Em Andamento",
       paused: "Pausado",
       completed: "Concluído",
@@ -2662,7 +2662,7 @@ export default {
     edited_by: "Editado por",
   },
   self_hosted_maintenance_message: {
-    plane_didnt_start_up_this_could_be_because_one_or_more_plane_services_failed_to_start:
+    Cyrus_didnt_start_up_this_could_be_because_one_or_more_Cyrus_services_failed_to_start:
       "O Cyrus não inicializou. Isso pode ser porque um ou mais serviços do Cyrus falharam ao iniciar.",
     choose_view_logs_from_setup_sh_and_docker_logs_to_be_sure:
       "Escolha View Logs do setup.sh e logs do Docker para ter certeza.",
