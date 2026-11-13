@@ -1,5 +1,7 @@
 # Directive
 
+[![CI](https://github.com/joey12725/directive/actions/workflows/ci.yml/badge.svg)](https://github.com/joey12725/directive/actions/workflows/ci.yml) ![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)
+
 **Autonomous agent orchestration on top of a real project-management system.** You set goals, budgets and schedules. A PM agent breaks the work into stories, dispatches Claude Code, Codex, Gemini CLI, OpenCode or OpenClaw workers to do them, checks their output, and reports back through the same boards, cycles and dashboards a human team would use.
 
 ![Directive architecture](docs/assets/architecture.svg)
