@@ -41,7 +41,7 @@ const relaySecret = process.env.CYRUS_RELAY_SECRET ?? "";
 const defaultCwd = process.env.CYRUS_RELAY_DEFAULT_CWD || os.homedir();
 const acpxBinary = process.platform === "win32" ? "acpx.cmd" : "acpx";
 const openClawBinary = process.platform === "win32" ? "openclaw.cmd" : "openclaw";
-const claudeBinary = process.platform === "win32" ? "C:\\Users\\you\\.local\\bin\\claude.exe" : "claude";
+const claudeBinary = process.env.CYRUS_CLAUDE_BINARY || (process.platform === "win32" ? "claude.exe" : "claude");
 // On Windows, spawn node directly to avoid cmd.exe quoting issues.
 // Use process.execPath so we use the same Node.js binary running the relay
 // rather than relying on "node" being resolvable in the child process PATH.

@@ -17,7 +17,7 @@ Architecture:
                     → reports sprint done
 
 Run inside the Django API container:
-  docker exec cyrus-api-1 python test_e2e_cyrus_sprint.py
+  docker exec -e DEMO_WORKSPACE_PATH=/path/on/relay/host cyrus-api-1 python scripts/demo_sprint.py
 """
 import os
 import sys
@@ -25,7 +25,7 @@ import time
 import json
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "plane.settings.production")
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import django
 django.setup()
@@ -45,9 +45,9 @@ AGENT_TYPE_GEMINI = "gemini"
 # ─────────────────────────────────────────────────────────
 # Config
 # ─────────────────────────────────────────────────────────
-RELAY_URL       = "http://host.docker.internal:7420"
-RELAY_SECRET    = ""
-WORKSPACE_PATH  = r"C:\Users\you\snake-game2"
+RELAY_URL       = os.environ.get("CYRUS_RELAY_URL", "http://host.docker.internal:7420")
+RELAY_SECRET    = os.environ.get("CYRUS_RELAY_SECRET", "")
+WORKSPACE_PATH  = os.environ.get("DEMO_WORKSPACE_PATH", os.path.expanduser("~/snake-game2"))
 PROJECT_NAME    = "Snake Game 2"
 PROJECT_IDENT   = "SNKV2"
 

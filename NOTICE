@@ -1,0 +1,21 @@
+Directive
+Copyright (c) 2026 Joey Hersh
+
+This project is a derivative work of Plane (https://github.com/makeplane/plane),
+forked from Plane v1.2.3.
+
+  Plane
+  Copyright (c) 2023-present Plane Software, Inc. and contributors
+  SPDX-License-Identifier: AGPL-3.0-only
+
+The application under cyrus/ keeps Plane's source files, license, and copyright
+headers. The orchestration layer added on top of Plane (agent dispatch, compute
+pools and metering, scheduling engine, session replay, goals and KPIs, the
+orchestrator tool registry and loops, and the Cyrus Relay) is Copyright (c) 2026
+Joey Hersh.
+
+The whole work is distributed under the GNU Affero General Public License,
+version 3 only (AGPL-3.0-only). See LICENSE for the full text.
+
+"Plane" is a trademark of Plane Software, Inc. This project is not affiliated
+with or endorsed by Plane Software, Inc.

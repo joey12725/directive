@@ -9,7 +9,7 @@ Tests the full orchestration pipeline:
   Story 3 → Gemini CLI (validation)
 
 Run inside the Django API container:
-  docker exec cyrus-api-1 python test_e2e_snake_game.py
+  docker exec -e DEMO_WORKSPACE_PATH=/path/on/relay/host cyrus-api-1 python scripts/demo_single_project.py
 """
 import os
 import sys
@@ -17,7 +17,7 @@ import time
 import traceback
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "plane.settings.production")
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import django
 django.setup()
@@ -35,10 +35,10 @@ from plane.app.orchestrator.engine import Orchestrator
 # ─────────────────────────────────────────────
 # Config
 # ─────────────────────────────────────────────
-RELAY_URL     = "http://host.docker.internal:7420"
-RELAY_SECRET  = "dev-secret"
+RELAY_URL     = os.environ.get("CYRUS_RELAY_URL", "http://host.docker.internal:7420")
+RELAY_SECRET  = os.environ.get("CYRUS_RELAY_SECRET", "")
 # The snake game workspace dir lives on the HOST (relay's filesystem)
-WORKSPACE_PATH = r"C:\Users\you\snake-game"
+WORKSPACE_PATH = os.environ.get("DEMO_WORKSPACE_PATH", os.path.expanduser("~/snake-game"))
 
 SPRINT_NAME = "Snake Game Sprint"
 PROJECT_NAME = "Snake Game"

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" width="1000" height="520" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1000" height="520" rx="16" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="32" y="44" font-size="22" font-weight="700" fill="#0f172a">Directive</text>
+  <text x="140" y="44" font-size="15" fill="#475569">goals go down, work and reports come back up</text>
+
+  <!-- Human -->
+  <rect x="32" y="80" width="160" height="380" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="112" y="110" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">You</text>
+  <text x="112" y="140" font-size="13" fill="#334155" text-anchor="middle">Goals + KPIs</text>
+  <text x="112" y="162" font-size="13" fill="#334155" text-anchor="middle">Projects</text>
+  <text x="112" y="184" font-size="13" fill="#334155" text-anchor="middle">Compute pools</text>
+  <text x="112" y="206" font-size="13" fill="#334155" text-anchor="middle">Schedules</text>
+  <line x1="50" y1="232" x2="174" y2="232" stroke="#e2e8f0"/>
+  <text x="112" y="260" font-size="13" fill="#334155" text-anchor="middle">Executive dashboard</text>
+  <text x="112" y="282" font-size="13" fill="#334155" text-anchor="middle">Session replay</text>
+  <text x="112" y="304" font-size="13" fill="#334155" text-anchor="middle">Approvals + blockers</text>
+  <text x="112" y="326" font-size="13" fill="#334155" text-anchor="middle">Alignment drift</text>
+
+  <!-- Plane layer -->
+  <rect x="236" y="80" width="250" height="140" rx="12" fill="#eef2ff" stroke="#a5b4fc"/>
+  <text x="361" y="108" font-size="15" font-weight="700" fill="#1e1b4b" text-anchor="middle">Project-management layer</text>
+  <text x="361" y="128" font-size="12" fill="#4338ca" text-anchor="middle">Plane v1.2.3 (AGPL-3.0)</text>
+  <text x="361" y="156" font-size="13" fill="#312e81" text-anchor="middle">Work items, states, cycles</text>
+  <text x="361" y="178" font-size="13" fill="#312e81" text-anchor="middle">Modules, pages, comments</text>
+  <text x="361" y="200" font-size="13" fill="#312e81" text-anchor="middle">Board / list / Gantt views</text>
+
+  <!-- Orchestration layer -->
+  <rect x="236" y="250" width="250" height="210" rx="12" fill="#ecfdf5" stroke="#6ee7b7"/>
+  <text x="361" y="278" font-size="15" font-weight="700" fill="#064e3b" text-anchor="middle">Orchestration layer</text>
+  <text x="361" y="298" font-size="12" fill="#047857" text-anchor="middle">Django apps + Celery</text>
+  <text x="361" y="326" font-size="13" fill="#065f46" text-anchor="middle">Scheduling engine</text>
+  <text x="361" y="348" font-size="13" fill="#065f46" text-anchor="middle">Budget + rate-limit metering</text>
+  <text x="361" y="370" font-size="13" fill="#065f46" text-anchor="middle">PM agent + 26 orchestrator tools</text>
+  <text x="361" y="392" font-size="13" fill="#065f46" text-anchor="middle">Autonomous loops</text>
+  <text x="361" y="414" font-size="13" fill="#065f46" text-anchor="middle">Work-item lifecycle rules</text>
+  <text x="361" y="436" font-size="13" fill="#065f46" text-anchor="middle">Session store + summaries</text>
+
+  <!-- Relay -->
+  <rect x="560" y="200" width="190" height="140" rx="12" fill="#fff7ed" stroke="#fdba74"/>
+  <text x="655" y="230" font-size="15" font-weight="700" fill="#7c2d12" text-anchor="middle">Cyrus Relay</text>
+  <text x="655" y="250" font-size="12" fill="#c2410c" text-anchor="middle">Fastify, on the agent machine</text>
+  <text x="655" y="278" font-size="13" fill="#9a3412" text-anchor="middle">/dispatch (NDJSON stream)</text>
+  <text x="655" y="300" font-size="13" fill="#9a3412" text-anchor="middle">/exec, /cancel, /sessions</text>
+  <text x="655" y="322" font-size="13" fill="#9a3412" text-anchor="middle">Bearer-token auth</text>
+
+  <!-- Agents -->
+  <rect x="800" y="80" width="170" height="380" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="885" y="110" font-size="15" font-weight="700" fill="#0f172a" text-anchor="middle">Coding agents</text>
+  <rect x="820" y="130" width="130" height="40" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="885" y="155" font-size="13" fill="#0f172a" text-anchor="middle">Claude Code</text>
+  <rect x="820" y="182" width="130" height="40" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="885" y="207" font-size="13" fill="#0f172a" text-anchor="middle">Codex CLI</text>
+  <rect x="820" y="234" width="130" height="40" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="885" y="259" font-size="13" fill="#0f172a" text-anchor="middle">Gemini CLI</text>
+  <rect x="820" y="286" width="130" height="40" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="885" y="311" font-size="13" fill="#0f172a" text-anchor="middle">OpenCode</text>
+  <rect x="820" y="338" width="130" height="40" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="885" y="363" font-size="13" fill="#0f172a" text-anchor="middle">OpenClaw</text>
+  <text x="885" y="410" font-size="12" fill="#475569" text-anchor="middle">one adapter each,</text>
+  <text x="885" y="428" font-size="12" fill="#475569" text-anchor="middle">one event schema</text>
+
+  <!-- Arrows -->
+  <line x1="196" y1="150" x2="232" y2="150" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="198" y1="350" x2="230" y2="350" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  <line x1="361" y1="224" x2="361" y2="246" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  <path d="M488,330 C520,330 525,270 556,270" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="530" y="262" font-size="11" fill="#475569" text-anchor="middle">prompt</text>
+  <path d="M556,310 C530,310 520,410 488,410" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="528" y="440" font-size="11" fill="#475569" text-anchor="middle">events, tokens</text>
+  <line x1="754" y1="270" x2="796" y2="270" stroke="#475569" stroke-width="2" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+  <text x="775" y="260" font-size="11" fill="#475569" text-anchor="middle">spawn</text>
+
+  <text x="32" y="496" font-size="12" fill="#64748b">Green and orange boxes are the layer this repo adds. Indigo is the Plane foundation it builds on.</text>
+</svg>

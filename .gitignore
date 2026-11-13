@@ -81,9 +81,6 @@ Desktop.ini
 *.rdb
 *.rdb.gz
 
-# Lock files (depending on team preference, you may want to track these)
-# package-lock.json
-
 # Storybook
 storybook-static/
 *storybook.log
@@ -91,16 +88,9 @@ storybook-static/
 # Vercel
 .vercel
 
-# Session logs
-session\ logs/
-
-# Claude Code settings
+# Local agent state and scratch
 .claude/
-
-# Specific project files
 CLAUDE.md
-nul
-
-# Local/private orchestration state
-.soul/
+AGENTS.md
 workspace/
+nul

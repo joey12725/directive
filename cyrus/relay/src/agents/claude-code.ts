@@ -14,9 +14,8 @@ import type {
   ModelUsage,
 } from '../types/agent-events.js';
 
-const claudeBinary = process.platform === 'win32'
-  ? 'C:\\Users\\you\\.local\\bin\\claude.exe'
-  : 'claude';
+const claudeBinary = process.env.CYRUS_CLAUDE_BINARY
+  || (process.platform === 'win32' ? 'claude.exe' : 'claude');
 
 export class ClaudeCodeRunner extends AgentRunner {
   readonly name = 'claude';

@@ -77,6 +77,14 @@ app.conf.beat_schedule = {
         "task": "plane.bgtasks.exporter_expired_task.delete_old_s3_link",
         "schedule": crontab(hour=3, minute=45),  # UTC 03:45
     },
+    "cyrus-scheduling-tick": {
+        "task": "plane.app.schedules.tasks.scheduling_tick",
+        "schedule": crontab(minute="*/5"),
+    },
+    "cyrus-agent-health-check": {
+        "task": "plane.app.agents.tasks.check_agent_health",
+        "schedule": crontab(minute="*/5"),
+    },
     "cyrus-visionary-ideation-loop": {
         "task": "plane.app.orchestrator.loop_tasks.visionary_ideation_loop",
         "schedule": crontab(minute="*/30"),
