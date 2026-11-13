@@ -58,6 +58,7 @@ jobs:
       REDIS_URL: redis://localhost:6379/
       # Background tasks are queued to an in-memory broker; nothing consumes them in tests.
       AMQP_URL: memory://
+      WEB_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
